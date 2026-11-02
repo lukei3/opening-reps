@@ -15,7 +15,7 @@
   <nav id="tabs">
     <button data-tab="train" class="on">Train</button>
     <button data-tab="progress">Progress</button>
-    <button data-tab="settings">Settings</button>
+    <button data-tab="settings" id="devtab" hidden>Developer</button>
   </nav>
 </header>
 <div id="banner" class="banner" hidden></div>
@@ -124,7 +124,7 @@
       </div>
       <div id="treeView" class="tree"></div>
     </div>
-    <div class="card">
+    <div class="card" id="logCard" hidden>
       <h2>Move log (for tuning)</h2>
       <p class="muted small" id="logSummary"></p>
       <p class="muted small">Change the thresholds in Settings, come back, and the verdicts here update. Aim for no false alarms and no misses.</p>

@@ -63,6 +63,27 @@ function showTab(name) {
 }
 $('tabs').addEventListener('click', (e) => { if (e.target.dataset.tab) showTab(e.target.dataset.tab); });
 
+// Tuning lives behind a developer tab. Clicking the title asks for a password (a courtesy gate, not security).
+const DEV_HASH = '43978eb00a4ca11fd3bc5c65694fa76f47c5ee3272879cc1ac58f69a6fa69b59';
+const devKey = 'openingreps.dev';
+const devOn = () => { try { return localStorage.getItem(devKey) === '1'; } catch { return false; } };
+function setDev(on) {
+  try { on ? localStorage.setItem(devKey, '1') : localStorage.removeItem(devKey); } catch { /* storage blocked */ }
+  $('devtab').hidden = !on;
+  $('logCard').hidden = !on;
+  if (!on && !$('tab-settings').hidden) showTab('train');
+}
+async function sha256(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+document.querySelector('header.top h1').addEventListener('click', async () => {
+  if (devOn()) { setDev(false); return; }
+  const pw = prompt('Developer password');
+  if (pw && (await sha256(pw)) === DEV_HASH) setDev(true);
+});
+setDev(devOn());
+
 // ---------- setup form ----------
 
 function fillOpenings(sel) {
@@ -100,7 +121,7 @@ function updateSetupUi() {
   $('restrictRow').hidden = !op.restrict;
   $('restrictLabel').textContent = op.restrictLabel || '';
   $('depthNRow').hidden = $('depthMode').value !== 'move';
-  $('bracketText').textContent = `${cfg().ratingMin}–${cfg().ratingMax} (change in Settings)`;
+  $('bracketText').textContent = `${cfg().ratingMin}–${cfg().ratingMax} `;
 }
 $('opening').addEventListener('change', () => {
   // Picking an opening switches you to its usual side (Sicilian = Black); change the colour afterwards if you want the other one.
