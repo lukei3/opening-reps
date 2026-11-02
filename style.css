@@ -659,6 +659,18 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 
 /* the setup form is a compact box in the middle of the page, not a full-width bar */
 #setup { max-width: 480px; margin: min(9vh, 80px) auto 0; }
+
+/* phones and other touch screens only: nothing here applies to a desktop window */
+@media (max-width: 700px) {
+  html { -webkit-text-size-adjust: 100%; }
+  body { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+  button, select, label, .evalswitch, .liveeval { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  input, select, textarea { font-size: 16px; }   /* anything smaller makes iPhones zoom in when a field is tapped */
+  #setup { margin-top: 12px; }
+  #tabs button { min-height: 40px; }
+  .engmeta { display: none; }
+  .englines, .tablewrap { -webkit-overflow-scrolling: touch; }
+}
 .col-side .card:not([hidden]) { animation: rise 0.16s var(--ease) backwards; }
 .status.pulse { animation: nudge 0.14s var(--ease) backwards; }
 .dot { animation: pop 0.12s var(--ease) backwards; }
