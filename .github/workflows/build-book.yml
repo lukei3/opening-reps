@@ -1,0 +1,100 @@
+# Builds the opening book in the cloud, so nothing runs on your own computer.
+#
+# Each month of Lichess games is processed on its own free GitHub machine, all months at once, then the parts are merged
+# into one book you download. Run it from the repository's Actions tab: "Build opening book" -> "Run workflow".
+#
+# Try it small first (the defaults) to see how long one month takes, then raise games_per_month.
+# A single job may run for at most 6 hours, so choose games_per_month to fit in that.
+name: Build opening book
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'Months to process, comma separated (YYYY-MM)'
+        default: '2026-09,2026-08,2026-07,2026-06,2026-05,2026-04'
+      games_per_month:
+        description: 'Games to read from the start of each month (a whole month is about 86 million)'
+        default: '2000000'
+      part_min_position:
+        description: 'Per-month pruning: drop positions seen fewer times than this'
+        default: '10'
+      final_min_position:
+        description: 'After merging: drop positions seen fewer times than this (raise it to shrink the book)'
+        default: '30'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      months: ${{ steps.list.outputs.months }}
+    steps:
+      - id: list
+        env:
+          MONTHS: ${{ inputs.months }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          months = [m.strip() for m in os.environ['MONTHS'].split(',') if m.strip()]
+          for m in months:
+              assert re.fullmatch(r'\d{4}-\d{2}', m), f'bad month: {m!r}'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('months=' + json.dumps(months) + '\n')
+          PY
+
+  part:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install zstandard chess
+      - name: Build this month
+        env:
+          MONTH: ${{ matrix.month }}
+          GAMES: ${{ inputs.games_per_month }}
+          MINPOS: ${{ inputs.part_min_position }}
+        run: |
+          python tools/build_book.py \
+            --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
+            --games-per-url "${GAMES}" --chunk 600000 --shards 1024 --min-position "${MINPOS}" --min-move 3 \
+            --out part
+          du -sh part
+      - uses: actions/upload-artifact@v4
+        with:
+          name: part-${{ matrix.month }}
+          path: part
+          retention-days: 3
+
+  merge:
+    needs: part
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: part-*
+          path: parts
+      - name: Merge the months
+        env:
+          MINPOS: ${{ inputs.final_min_position }}
+        run: |
+          python tools/merge_books.py book parts/* --min-position "${MINPOS}" --min-move 5
+          cat book/meta.json
+          du -sh book
+      - uses: actions/upload-artifact@v4
+        with:
+          name: book
+          path: book
+          retention-days: 14

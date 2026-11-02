@@ -1,0 +1,10 @@
+{
+  "name": "Opening Trainer",
+  "short_name": "Openings",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#16181c",
+  "theme_color": "#1b1d21",
+  "icons": [{ "src": "pieces/cburnett/wN.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
+

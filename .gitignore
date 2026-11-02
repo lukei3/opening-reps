@@ -1,0 +1,11 @@
+# build output and working folders
+dist/
+book_big/
+book_b2/
+book_b3/
+book_merged/
+book_full/
+__pycache__/
+*.pyc
+*.log
+.claude/

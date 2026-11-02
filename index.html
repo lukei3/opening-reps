@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#21201d">
+<title>Opening Trainer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="pieces/cburnett/wN.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1><img class="logo" src="pieces/cburnett/wN.svg" alt="">Opening Trainer</h1>
+  <nav id="tabs">
+    <button data-tab="train" class="on">Train</button>
+    <button data-tab="progress">Progress</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+</header>
+<div id="banner" class="banner" hidden></div>
+
+<main>
+  <!-- TRAIN -->
+  <section id="tab-train">
+    <div id="setup" class="card">
+      <div class="sidepick" role="group" aria-label="Which side do you play?">
+        <div class="sidelabel">You play</div>
+        <button type="button" data-side="w" class="sidebtn"><img src="pieces/cburnett/wK.svg" alt=""><span>White</span></button>
+        <button type="button" data-side="b" class="sidebtn"><img src="pieces/cburnett/bK.svg" alt=""><span>Black</span></button>
+      </div>
+      <div class="row">
+        <label>Opening
+          <select id="opening"></select>
+        </label>
+        <label id="restrictRow" class="check" hidden><input type="checkbox" id="restrict"><span id="restrictLabel"></span></label>
+      </div>
+      <div class="row" id="customRow">
+        <label>Or start from your own moves <span class="muted">(optional, overrides the opening)</span>
+          <input id="customMoves" type="text" placeholder="e.g. e4 c5 Nf3 d6 d4 cxd4 Nxd4" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </label>
+      </div>
+      <div class="row">
+        <label>Play until
+          <select id="depthMode">
+            <option value="move">a move number</option>
+            <option value="data">the database runs out</option>
+            <option value="equal">equal, or the database runs out</option>
+          </select>
+        </label>
+        <label id="depthNRow">Move
+          <input id="depthN" type="number" min="3" max="40" value="12" inputmode="numeric">
+        </label>
+      </div>
+      <div class="row">
+        <label>Opponent rating
+          <span id="bracketText" class="muted"></span>
+        </label>
+      </div>
+      <div class="row">
+        <button id="startBtn" class="primary">Start training</button>
+        <button id="drillBtn" class="ghost" title="Start from the earliest position you usually get wrong, in any opening">Drill my weak spots</button>
+      </div>
+    </div>
+
+    <div id="game" hidden>
+      <div class="col-board">
+      <div class="statusrow">
+        <div id="status" class="status"></div>
+        <label class="evalswitch liveeval" id="liveEvalSwitch" title="Show the engine's evaluation while you play (the bar and the number only, no suggested moves)">
+          <input type="checkbox" id="liveEvalToggle"><span class="track"><span class="knob"></span></span><b>Eval</b><span class="chip" id="liveChip">–</span>
+        </label>
+      </div>
+      <div class="board-wrap">
+        <div class="board-row">
+          <div id="evalbar" class="evalbar idle"><div id="evalfill"></div><span id="evaltxt"></span></div>
+          <div id="board"></div>
+        </div>
+      </div>
+      <div id="promo" class="promo" hidden></div>
+      <div id="moves" class="moves"></div>
+      <div id="opLine" class="opline"></div>
+      <div id="evalLine" class="muted evalLine"></div>
+      </div>
+      <div class="col-side">
+      <div id="mistake" class="card mistake" hidden></div>
+      <div id="done" class="card done" hidden></div>
+      </div>
+      <div class="row gamebar">
+        <button id="analyseBtn" class="ghost">Analyse</button>
+        <button id="setupBtn" class="ghost">Setup</button>
+      <span id="anaNav" class="ananav" hidden>
+        <button id="anaFirst" class="ghost" title="Start of the game (Home)" aria-label="First move">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5v14"/><path d="M18 6l-7 6 7 6"/></svg></button>
+        <button id="anaPrev" class="ghost" title="Back one move (←)" aria-label="Previous move">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button id="anaNext" class="ghost" title="Forward one move (→)" aria-label="Next move">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+        <button id="anaLast" class="ghost" title="End of the game (End)" aria-label="Last move">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5v14"/><path d="M6 6l7 6-7 6"/></svg></button>
+      </span>
+        <span class="gap"></span>
+        <button id="flipBtn" class="ghost icon" title="Flip board and swap sides" aria-label="Flip board and swap sides">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16"/><path d="M3 8l4-4 4 4"/><path d="M17 20V4"/><path d="M21 16l-4 4-4-4"/></svg>
+        </button>
+        <button id="soundBtn" class="ghost icon" title="Sound on/off" aria-label="Sound on/off"></button>
+        <button id="restartBtn" class="ghost icon" title="Reset: start this line again" aria-label="Reset: start this line again">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROGRESS -->
+  <section id="tab-progress" hidden>
+    <div class="card">
+      <div id="statsSummary" class="stats"></div>
+    </div>
+    <div class="card">
+      <h2>Where I am</h2>
+      <p class="muted small">Green is solid, amber is shaky or new, red is a recent mistake, grey is a branch you have not met yet. Tap a move’s “Train from here” to start there.</p>
+      <div class="row">
+        <label>Opening <select id="treeOpening"></select></label>
+      </div>
+      <div id="treeView" class="tree"></div>
+    </div>
+    <div class="card">
+      <h2>Move log (for tuning)</h2>
+      <p class="muted small" id="logSummary"></p>
+      <p class="muted small">Change the thresholds in Settings, come back, and the verdicts here update. Aim for no false alarms and no misses.</p>
+      <div id="logList"></div>
+    </div>
+    <div class="card">
+      <h2>Weak spots</h2>
+      <div id="weakList"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" hidden>
+    <div class="card">
+      <h2>Opponent and data</h2>
+      <p class="muted small">Moves and results come from a database of real Lichess games that ships with this app. There is no account or sign-in.</p>
+      <div class="row">
+        <label>Opponent rating from
+          <select id="s_ratingMin"></select>
+        </label>
+        <label>to (not including)
+          <select id="s_ratingMax"></select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Board
+          <select id="s_boardTheme"><option value="green">Green</option><option value="brown">Brown</option><option value="blue">Blue</option></select>
+        </label>
+        <label>Knight arrows
+          <select id="s_knightArrows"><option value="L">L-shaped (two along, one across)</option><option value="straight">Straight line</option></select>
+        </label>
+      </div>
+      <label class="check"><input type="checkbox" id="s_animations"><span>Smooth animations (pieces slide, panels ease in)</span></label>
+      <label class="check"><input type="checkbox" id="s_liveEval"><span>Show the eval bar and number while playing (no suggested moves)</span></label>
+      <label class="check"><input type="checkbox" id="s_showEval"><span>Show the engine evaluation (eval bar, lines and numbers)</span></label>
+      <div class="row">
+        <label>Bot move delay (ms) <input id="s_botDelayMs" type="number" min="0" max="3000" step="50"></label>
+      </div>
+      <div class="muted small" id="bookInfo"></div>
+    </div>
+
+    <div class="card">
+      <h2>How strict is “mistake”?</h2>
+      <p class="muted small">A move is flagged when the weighted mix of the three signals reaches the threshold, or when the engine says it loses at least the blunder size. Tune these as you test.</p>
+      <div class="grid2" id="tuning"></div>
+      <div class="row">
+        <button id="resetTuningBtn" class="ghost">Restore defaults</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Your data</h2>
+      <div class="row">
+        <button id="exportBtn" class="ghost">Export progress</button>
+        <label class="filebtn ghost">Import progress<input type="file" id="importFile" accept="application/json" hidden></label>
+        <button id="clearAcceptedBtn" class="ghost">Clear “never flag” moves</button>
+        <button id="resetBtn" class="danger">Reset progress</button>
+      </div>
+      <div class="muted small">Practice and preparation only. Do not use during live rated games.</div>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
+
