@@ -306,7 +306,8 @@ async function advance() {
       await sleep(cfg().botDelayMs);
       if (id !== G.id) return;
       mv = g.move(pick.san);
-    } else if (G.mode === 'free') {
+    } else if (G.mode === 'free' || G.cfg.depthMode === 'move') {
+      // the database is empty here: when you asked for a set depth, the opponent carries on with the engine's choice
       const best = await bestMove(fen, 400);
       if (id !== G.id) return;
       if (!best) return finish('The game is over.');
