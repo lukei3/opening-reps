@@ -22,6 +22,18 @@ on:
       final_min_position:
         description: 'After merging: drop positions seen fewer times than this (raise it to shrink the book)'
         default: '30'
+      chunk_min_position:
+        description: 'Depth control: inside each chunk of games, expand a line once seen this often (lower = deeper, slower, more memory)'
+        default: '5'
+      min_parent:
+        description: 'Depth control: inside each chunk, create a child once its parent was seen this often'
+        default: '3'
+      chunk_min_move:
+        description: 'Depth control: inside each chunk, keep a move once seen this often'
+        default: '2'
+      chunk_games:
+        description: 'Games per in-memory chunk (bigger = rare lines add up before pruning, but needs more memory)'
+        default: '600000'
 
 jobs:
   plan:
@@ -62,11 +74,17 @@ jobs:
           MONTH: ${{ matrix.month }}
           GAMES: ${{ inputs.games_per_month }}
           MINPOS: ${{ inputs.part_min_position }}
+          CMINPOS: ${{ inputs.chunk_min_position }}
+          MINPARENT: ${{ inputs.min_parent }}
+          CMINMOVE: ${{ inputs.chunk_min_move }}
+          CHUNK: ${{ inputs.chunk_games }}
         run: |
-          python tools/build_book.py \
+          /usr/bin/time -v python tools/build_book.py \
             --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
-            --games-per-url "${GAMES}" --chunk 600000 --shards 1024 --min-position "${MINPOS}" --min-move 3 \
-            --out part
+            --games-per-url "${GAMES}" --chunk "${CHUNK}" --shards 1024 --min-position "${MINPOS}" --min-move 3 \
+            --chunk-min-position "${CMINPOS}" --min-parent "${MINPARENT}" --chunk-min-move "${CMINMOVE}" \
+            --out part 2> time.log || { tail -n 30 time.log; exit 1; }
+          grep -E "Maximum resident|Elapsed" time.log
           du -sh part
       - uses: actions/upload-artifact@v4
         with:

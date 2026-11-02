@@ -164,8 +164,11 @@ def stream_url(url):
 
 
 def main():
-    global SHARDS, MIN_POSITION, MIN_MOVE
+    global SHARDS, MIN_POSITION, MIN_MOVE, MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE
     ap = argparse.ArgumentParser()
+    ap.add_argument('--chunk-min-position', type=int, default=CHUNK_MIN_POSITION, help='inside a chunk, expand a line only once seen this often (lower = deeper, more memory)')
+    ap.add_argument('--chunk-min-move', type=int, default=CHUNK_MIN_MOVE, help='inside a chunk, keep a move only once seen this often')
+    ap.add_argument('--min-parent', type=int, default=MIN_PARENT, help='inside a chunk, create a child only once its parent was seen this often')
     ap.add_argument('--url', action='append', required=True, help='a monthly .pgn.zst URL (repeat for several months)')
     ap.add_argument('--games-per-url', type=int, default=2_000_000, help='games to READ from the start of each file')
     ap.add_argument('--chunk', type=int, default=400_000, help='qualifying games per in-memory chunk')
@@ -176,6 +179,7 @@ def main():
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'book'))
     a = ap.parse_args()
     SHARDS, MIN_POSITION, MIN_MOVE = a.shards, a.min_position, a.min_move
+    MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE = a.min_parent, a.chunk_min_position, a.chunk_min_move
     log = lambda m: print(m, flush=True)
 
     merged = {}
