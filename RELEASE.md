@@ -20,7 +20,7 @@ The app has no connection to Lichess at run time: no token, no API calls, nothin
 
 ## Naming
 
-- Pick a name that is not a trademark you would collide with. "Opening Trainer" is generic; a distinctive name is safer.
+- Pick a name that is not a trademark you would collide with. "Opening Reps" is made of everyday words; check it is free where you publish it.
 
 ## Privacy
 

@@ -15,5 +15,5 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 http.server.ThreadingHTTPServer.allow_reuse_address = True
 with http.server.ThreadingHTTPServer(('', PORT), Handler) as httpd:
-    print(f'Opening Trainer: http://localhost:{PORT}')
+    print(f'Opening Reps: http://localhost:{PORT}')
     httpd.serve_forever()

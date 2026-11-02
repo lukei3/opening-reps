@@ -1305,7 +1305,7 @@ async function renderSettingsInfo() {
 $('exportBtn').onclick = () => {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([store.exportJson()], { type: 'application/json' }));
-  a.download = 'opening-trainer-progress.json'; a.click();
+  a.download = 'opening-reps-progress.json'; a.click();
 };
 $('importFile').onchange = async (e) => {
   const f = e.target.files[0]; if (!f) return;

@@ -1,4 +1,4 @@
-# Opening Trainer
+# Opening Reps
 
 A chess opening trainer that plays like real people play. You face a bot that picks its moves from real Lichess games at your rating level, and the game stops the moment you make a real mistake, showing what you could have played, how the engine rates each option, and how real players fared with each.
 

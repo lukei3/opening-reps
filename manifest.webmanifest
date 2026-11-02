@@ -1,6 +1,6 @@
 {
-  "name": "Opening Trainer",
-  "short_name": "Openings",
+  "name": "Opening Reps",
+  "short_name": "Opening Reps",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#16181c",

@@ -158,7 +158,7 @@ def fold(trie, merged):
 
 
 def stream_url(url):
-    resp = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'opening-trainer-book-builder'}))
+    resp = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'opening-reps-book-builder'}))
     reader = zstandard.ZstdDecompressor().stream_reader(resp)
     return resp, io.TextIOWrapper(reader, encoding='utf-8', errors='replace')
 
