@@ -656,6 +656,9 @@ table.alts tr.played td { color: var(--mistake-soft); }
    animations release their layer the moment they end ("backwards", not "both"), and buttons no longer shift on hover.
    ===================================================================== */
 section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { animation: none; }
+
+/* the setup form is a compact box in the middle of the page, not a full-width bar */
+#setup { max-width: 480px; margin: min(9vh, 80px) auto 0; }
 .col-side .card:not([hidden]) { animation: rise 0.16s var(--ease) backwards; }
 .status.pulse { animation: nudge 0.14s var(--ease) backwards; }
 .dot { animation: pop 0.12s var(--ease) backwards; }
