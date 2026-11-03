@@ -12,6 +12,7 @@ Writes book/meta.json and book/sNN.json (sharded by position so the app loads on
 Needs:  pip install zstandard chess
 """
 import argparse
+import bisect
 import io
 import json
 import os
@@ -24,11 +25,13 @@ from array import array
 import chess
 import zstandard
 
-BUCKETS = [1400, 1600, 1800, 2000]   # each covers [b, b+200)
+BUCKETS = [400, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500]   # Lichess's rating groups: 400 is "under 1000", 2500 is "2500 and up"
+EDGES = BUCKETS[1:]
 NB = len(BUCKETS)
-W = NB * 3                           # counters per move: [w, d, b] for each bucket
+W = NB * 3                           # counters per move: [w, d, b] for each rating group
 SHARDS = 64
-SPEEDS = ('Blitz', 'Rapid', 'Classical')
+SPEED_NAMES = ('bullet', 'blitz', 'rapid', 'classical')   # UltraBullet counts as bullet; correspondence is left out
+WANT_SPEED = None                    # set by --speed: one pass per time control keeps memory small
 RESULT_IDX = {'1-0': 0, '1/2-1/2': 1, '0-1': 2}
 COMMENT = re.compile(r'\{[^}]*\}')
 MIN_PARENT = 3        # inside a chunk, a child node is made only once its parent has been seen this often
@@ -45,10 +48,19 @@ def shard_of(key):
     return h % SHARDS
 
 
-def games(stream, max_games, max_ply, log):
-    """Yield (bucket, result_idx, [san...]) for games that pass the filters; stops after max_games games are READ."""
+def speed_of(event):
+    for name in ('Bullet', 'Blitz', 'Rapid', 'Classical'):   # "UltraBullet" contains "Bullet"
+        if name in event:
+            return name.lower()
+    return None
+
+
+def games(stream, max_games, max_ply, log, max_qualifying=0):
+    """Yield (bucket, result_idx, [san...]) for games that pass the filters.
+
+    Stops after max_games games are READ, or after max_qualifying games have been YIELDED (0 = no limit)."""
     event = we = be = res = None
-    seen = 0
+    seen = kept = 0
     t0 = time.time()
     for raw in stream:
         line = raw.strip()
@@ -69,13 +81,16 @@ def games(stream, max_games, max_ply, log):
         seen += 1
         if seen % 250000 == 0:
             log(f'  read {seen:,} games ({seen / (time.time() - t0):,.0f}/s)')
-        ok = event and any(s in event for s in SPEEDS) and we and be and we.isdigit() and be.isdigit() and res in RESULT_IDX
+        sp = speed_of(event) if event else None
+        ok = sp and (WANT_SPEED is None or sp == WANT_SPEED) and we and be and we.isdigit() and be.isdigit() and res in RESULT_IDX
         if ok:
             avg = (int(we) + int(be)) // 2
-            if BUCKETS[0] <= avg < BUCKETS[-1] + 200:
-                toks = COMMENT.sub('', line).split()
-                sans = [t.rstrip('!?') for t in toks if t[0].isalpha() and t not in ('O',)][:max_ply]
-                yield (avg - BUCKETS[0]) // 200, RESULT_IDX[res], sans
+            toks = COMMENT.sub('', line).split()
+            sans = [t.rstrip('!?') for t in toks if t[0].isalpha() and t not in ('O',)][:max_ply]
+            kept += 1
+            yield bisect.bisect_right(EDGES, avg), RESULT_IDX[res], sans
+            if max_qualifying and kept >= max_qualifying:
+                return
         event = we = be = res = None
         if seen >= max_games:
             return
@@ -164,8 +179,10 @@ def stream_url(url):
 
 
 def main():
-    global SHARDS, MIN_POSITION, MIN_MOVE, MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE
+    global SHARDS, MIN_POSITION, MIN_MOVE, MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE, WANT_SPEED
     ap = argparse.ArgumentParser()
+    ap.add_argument('--speed', choices=SPEED_NAMES, help='keep only this time control (default: all four; the merge step combines passes)')
+    ap.add_argument('--max-qualifying', type=int, default=0, help='stop after this many games of that time control (0 = no limit)')
     ap.add_argument('--chunk-min-position', type=int, default=CHUNK_MIN_POSITION, help='inside a chunk, expand a line only once seen this often (lower = deeper, more memory)')
     ap.add_argument('--chunk-min-move', type=int, default=CHUNK_MIN_MOVE, help='inside a chunk, keep a move only once seen this often')
     ap.add_argument('--min-parent', type=int, default=MIN_PARENT, help='inside a chunk, create a child only once its parent was seen this often')
@@ -180,6 +197,7 @@ def main():
     a = ap.parse_args()
     SHARDS, MIN_POSITION, MIN_MOVE = a.shards, a.min_position, a.min_move
     MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE = a.min_parent, a.chunk_min_position, a.chunk_min_move
+    WANT_SPEED = a.speed
     log = lambda m: print(m, flush=True)
 
     merged = {}
@@ -187,7 +205,7 @@ def main():
     for url in a.url:
         log(f'Streaming {url}')
         resp, text = stream_url(url)
-        gen = games(text, a.games_per_url, a.max_ply, log)
+        gen = games(text, a.games_per_url, a.max_ply, log, a.max_qualifying)
         done = False
         while not done:
             trie = Trie()
@@ -221,8 +239,8 @@ def main():
             json.dump(s, f, separators=(',', ':'))
     meta = {
         'source': ', '.join(u.rsplit('/', 1)[-1] for u in a.url), 'games': used, 'positions': kept, 'buckets': BUCKETS,
-        'shards': SHARDS, 'maxPly': a.max_ply, 'speeds': [s.lower() for s in SPEEDS], 'built': time.strftime('%Y-%m-%d'),
-        'note': 'Lichess open database (CC0), players of all kinds at 1400-2199 average rating. Counts are per rating bucket as [w,d,b] triples.',
+        'shards': SHARDS, 'maxPly': a.max_ply, 'speeds': [a.speed] if a.speed else list(SPEED_NAMES), 'built': time.strftime('%Y-%m-%d'),
+        'note': 'Lichess open database (CC0). Counts are per rating group (average of both players) as [w,d,b] triples.',
     }
     with open(os.path.join(a.out, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, indent=1)

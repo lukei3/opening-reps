@@ -1,10 +1,11 @@
 # Builds the opening book in the cloud, so nothing runs on your own computer.
 #
-# Each month of Lichess games is processed on its own free GitHub machine, all months at once, then the parts are merged
-# into one book you download. Run it from the repository's Actions tab: "Build opening book" -> "Run workflow".
+# Every month of Lichess games is processed once per time control (bullet, blitz, rapid, classical), all at once on
+# free GitHub machines, then the parts are merged into one book you download. The app lets players choose time
+# controls and rating groups, so the book keeps separate counts for each.
+# Run it from the repository's Actions tab: "Build opening book" -> "Run workflow".
 #
-# Try it small first (the defaults) to see how long one month takes, then raise games_per_month.
-# A single job may run for at most 6 hours, so choose games_per_month to fit in that.
+# A single job may run for at most 6 hours. The caps below are games KEPT per month and time control.
 name: Build opening book
 
 on:
@@ -13,11 +14,20 @@ on:
       months:
         description: 'Months to process, comma separated (YYYY-MM)'
         default: '2026-09,2026-08,2026-07,2026-06,2026-05,2026-04'
-      games_per_month:
-        description: 'Games to read from the start of each month (a whole month is about 86 million)'
-        default: '2000000'
+      cap_bullet:
+        description: 'Bullet games to keep per month'
+        default: '6000000'
+      cap_blitz:
+        description: 'Blitz games to keep per month'
+        default: '8000000'
+      cap_rapid:
+        description: 'Rapid games to keep per month'
+        default: '6000000'
+      cap_classical:
+        description: 'Classical games to keep per month'
+        default: '3000000'
       part_min_position:
-        description: 'Per-month pruning: drop positions seen fewer times than this'
+        description: 'Per part: drop positions seen fewer times than this'
         default: '10'
       final_min_position:
         description: 'After merging: drop positions seen fewer times than this (raise it to shrink the book)'
@@ -39,19 +49,23 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     outputs:
-      months: ${{ steps.list.outputs.months }}
+      parts: ${{ steps.list.outputs.parts }}
     steps:
       - id: list
         env:
           MONTHS: ${{ inputs.months }}
+          CAPS: ${{ toJson(inputs) }}
         run: |
           python3 - <<'PY'
           import json, os, re
           months = [m.strip() for m in os.environ['MONTHS'].split(',') if m.strip()]
           for m in months:
               assert re.fullmatch(r'\d{4}-\d{2}', m), f'bad month: {m!r}'
+          caps = json.loads(os.environ['CAPS'])
+          parts = [{'month': m, 'speed': s, 'cap': int(caps['cap_' + s])}
+                   for m in months for s in ('bullet', 'blitz', 'rapid', 'classical')]
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write('months=' + json.dumps(months) + '\n')
+              f.write('parts=' + json.dumps(parts) + '\n')
           PY
 
   part:
@@ -62,17 +76,18 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        month: ${{ fromJson(needs.plan.outputs.months) }}
+        include: ${{ fromJson(needs.plan.outputs.parts) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install zstandard chess
-      - name: Build this month
+      - name: Build this month and time control
         env:
           MONTH: ${{ matrix.month }}
-          GAMES: ${{ inputs.games_per_month }}
+          SPEED: ${{ matrix.speed }}
+          CAP: ${{ matrix.cap }}
           MINPOS: ${{ inputs.part_min_position }}
           CMINPOS: ${{ inputs.chunk_min_position }}
           MINPARENT: ${{ inputs.min_parent }}
@@ -81,14 +96,15 @@ jobs:
         run: |
           /usr/bin/time -v python tools/build_book.py \
             --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
-            --games-per-url "${GAMES}" --chunk "${CHUNK}" --shards 1024 --min-position "${MINPOS}" --min-move 3 \
+            --speed "${SPEED}" --max-qualifying "${CAP}" --games-per-url 1000000000 \
+            --chunk "${CHUNK}" --shards 1024 --min-position "${MINPOS}" --min-move 3 \
             --chunk-min-position "${CMINPOS}" --min-parent "${MINPARENT}" --chunk-min-move "${CMINMOVE}" \
             --out part 2> time.log || { tail -n 30 time.log; exit 1; }
           grep -E "Maximum resident|Elapsed" time.log
           du -sh part
       - uses: actions/upload-artifact@v4
         with:
-          name: part-${{ matrix.month }}
+          name: part-${{ matrix.month }}-${{ matrix.speed }}
           path: part
           retention-days: 3
 
@@ -104,7 +120,7 @@ jobs:
         with:
           pattern: part-*
           path: parts
-      - name: Merge the months
+      - name: Merge the parts
         env:
           MINPOS: ${{ inputs.final_min_position }}
         run: |
