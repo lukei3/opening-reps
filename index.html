@@ -52,10 +52,10 @@
           <input id="depthN" type="number" min="3" max="40" value="12" inputmode="numeric">
         </label>
       </div>
-      <div class="row">
-        <label>Opponent rating
-          <span id="bracketText" class="muted"></span>
-        </label>
+      <div class="filters">
+        <div class="filterhead"><span>Games to learn from</span><span id="filterSummary" class="muted small"></span></div>
+        <div class="filterrow"><span class="filterlabel">Time control</span><div id="speedChips" class="chips"></div></div>
+        <div class="filterrow"><span class="filterlabel">Average rating</span><div id="ratingChips" class="chips"></div></div>
       </div>
       <div class="row">
         <button id="startBtn" class="primary">Start training</button>
@@ -141,14 +141,6 @@
     <div class="card">
       <h2>Opponent and data</h2>
       <p class="muted small">Moves and results come from a database of real Lichess games that ships with this app. There is no account or sign-in.</p>
-      <div class="row">
-        <label>Opponent rating from
-          <select id="s_ratingMin"></select>
-        </label>
-        <label>to (not including)
-          <select id="s_ratingMax"></select>
-        </label>
-      </div>
       <div class="row">
         <label>Board
           <select id="s_boardTheme"><option value="green">Green</option><option value="brown">Brown</option><option value="blue">Blue</option></select>

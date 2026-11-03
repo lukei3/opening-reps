@@ -106,7 +106,7 @@ jobs:
         with:
           name: part-${{ matrix.month }}-${{ matrix.speed }}
           path: part
-          retention-days: 3
+          retention-days: 7   # kept a week so the merge can be re-run with different pruning
 
   merge:
     needs: part

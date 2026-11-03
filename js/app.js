@@ -121,8 +121,24 @@ function updateSetupUi() {
   $('restrictRow').hidden = !op.restrict;
   $('restrictLabel').textContent = op.restrictLabel || '';
   $('depthNRow').hidden = $('depthMode').value !== 'move';
-  $('bracketText').textContent = `${cfg().ratingMin}–${cfg().ratingMax} `;
+  renderFilters();
 }
+
+// Which games the numbers come from: time controls and rating groups, as toggle buttons like Lichess's explorer.
+function renderFilters() {
+  const chip = (kind, val, label, on) => `<button type="button" class="chip${on ? ' on' : ''}" data-${kind}="${val}" aria-pressed="${on}">${label}</button>`;
+  $('speedChips').innerHTML = store.SPEED_CHOICES.map(([k, n]) => chip('speed', k, n, cfg().speeds.includes(k))).join('');
+  $('ratingChips').innerHTML = store.RATING_GROUPS.map((g) => chip('rating', g, g, cfg().ratings.includes(g))).join('');
+  $('filterSummary').textContent = `${store.speedLabel()}, ${store.ratingLabel()}`;
+}
+function toggleFilter(key, value) {
+  const list = cfg()[key], i = list.indexOf(value);
+  if (i >= 0) { if (list.length > 1) list.splice(i, 1); }   // keep at least one choice selected
+  else list.push(value);
+  store.save(); renderFilters();
+}
+$('speedChips').addEventListener('click', (e) => { const b = e.target.closest('[data-speed]'); if (b) toggleFilter('speeds', b.dataset.speed); });
+$('ratingChips').addEventListener('click', (e) => { const b = e.target.closest('[data-rating]'); if (b) toggleFilter('ratings', +b.dataset.rating); });
 $('opening').addEventListener('change', () => {
   // Picking an opening switches you to its usual side (Sicilian = Black); change the colour afterwards if you want the other one.
   sideOverride = null; S().prefs.sideChosen = false; store.save();
@@ -567,7 +583,7 @@ function hideAnalysis() {
 }
 
 function sourceNote() {
-  return `Games: Lichess <b>players</b>, rated ${cfg().ratingMin}–${cfg().ratingMax}, from the opening database stored in this app.`;
+  return `Games: Lichess <b>players</b>, ${store.speedLabel()}, rated ${store.ratingLabel()}, from the opening database stored in this app.`;
 }
 
 // Any game position can be opened on the analysis board: the Analyse button, or a click on a move.
@@ -695,7 +711,7 @@ async function renderAnalysis() {
       <div class="englines">${slots(evalOn() ? 'Analysing…' : 'Engine off')}</div>
     </section>
     <section class="gamesbox">
-      <div class="gm-title"><b>Lichess players</b><span id="gmsrc">${cfg().ratingMin}–${cfg().ratingMax}</span></div>
+      <div class="gm-title"><b>Lichess players</b><span id="gmsrc">${store.ratingLabel()}</span></div>
       <div class="opname" id="opname"></div>
       <div class="tablewrap"><table class="ana"><thead><tr><th>Move</th><th>Eval</th><th>Played</th><th>White / Draw / Black</th></tr></thead>
       <tbody><tr><td colspan="4" class="muted">Loading games…</td></tr></tbody>
@@ -706,7 +722,7 @@ async function renderAnalysis() {
   bookMeta().then((m) => {
     const el = document.getElementById('gmsrc');
     if (!el || !m) return;
-    el.textContent = `${cfg().ratingMin}–${cfg().ratingMax} · sample of ${compact(m.games)} games`;
+    el.textContent = `${store.speedLabel()}, ${store.ratingLabel()} · from ${compact(m.games)} games`;
     el.title = 'These counts come from a sample of Lichess games stored in this app, not all of Lichess, so they are far smaller than the totals on lichess.org. The percentages are reliable for common moves.';
   });
   $('evalToggle').onchange = () => {
@@ -1284,9 +1300,6 @@ const TUNING = [
 
 function buildSettings() {
   const sel = (id, vals) => { $(id).innerHTML = vals.map((v) => `<option>${v}</option>`).join(''); };
-  sel('s_ratingMin', [1400, 1600, 1800, 2000]);
-  sel('s_ratingMax', [1600, 1800, 2000, 2200]);
-  $('s_ratingMin').value = cfg().ratingMin; $('s_ratingMax').value = cfg().ratingMax;
   $('s_botDelayMs').value = cfg().botDelayMs;
   $('tuning').innerHTML = TUNING.map(([k, label, step, min, max]) =>
     `<label>${esc(label)}<input type="number" data-k="${k}" step="${step}" min="${min}" max="${max}" value="${cfg()[k]}"></label>`).join('');
@@ -1306,8 +1319,6 @@ $('s_showEval').checked = evalOn();
 $('s_knightArrows').onchange = () => { cfg().knightArrows = $('s_knightArrows').value; store.save(); board.render(); };
 $('s_showEval').onchange = () => { cfg().showEval = $('s_showEval').checked; store.save(); if (!cfg().showEval) cancelPrefetch(); if (A) renderAnalysis(); else if (!cfg().showEval) idleBar(); };
 $('s_boardTheme').onchange = () => { cfg().boardTheme = $('s_boardTheme').value; store.save(); applyLook(); };
-$('s_ratingMin').onchange = () => { cfg().ratingMin = +$('s_ratingMin').value; store.save(); updateSetupUi(); renderSettingsInfo(); };
-$('s_ratingMax').onchange = () => { cfg().ratingMax = +$('s_ratingMax').value; store.save(); updateSetupUi(); renderSettingsInfo(); };
 $('s_botDelayMs').onchange = () => { cfg().botDelayMs = Math.max(0, +$('s_botDelayMs').value || 0); store.save(); };
 $('tuning').onchange = (e) => {
   const k = e.target.dataset.k; if (!k) return;
@@ -1321,7 +1332,7 @@ $('resetTuningBtn').onclick = () => {
 async function renderSettingsInfo() {
   const m = await bookMeta();
   $('bookInfo').textContent = m
-    ? `Opening database: ${m.games.toLocaleString()} rated games (${m.built}), ${m.positions.toLocaleString()} positions, ratings 1400–2200, first ${Math.ceil(m.maxPly / 2)} moves. Your bracket: ${cfg().ratingMin}–${cfg().ratingMax}.`
+    ? `Opening database: ${m.games.toLocaleString()} rated games (${m.built}), ${m.positions.toLocaleString()} positions, first ${Math.ceil(m.maxPly / 2)} moves. Counting: ${store.speedLabel()}, ${store.ratingLabel()}.`
     : 'The opening database is missing (book/meta.json).';
 }
 $('exportBtn').onclick = () => {

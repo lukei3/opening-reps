@@ -9,6 +9,7 @@ meta.json names the speeds and rating groups. The --min flags prune rare positio
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -78,7 +79,7 @@ def main():
         with open(os.path.join(out, f's{i:02d}.json'), 'w', encoding='utf-8') as f:
             json.dump(shard, f, separators=(',', ':'))
 
-    months = sorted({src for m in metas for src in m['source'].split(', ')})
+    months = sorted({mo for m in metas for mo in re.findall(r'\d{4}-\d{2}', m['source'])})
     meta = dict(metas[0])
     meta.update({
         'source': f'{len(months)} monthly Lichess dumps, {months[0]} to {months[-1]}',

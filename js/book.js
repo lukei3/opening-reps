@@ -33,15 +33,30 @@ export async function getBookPosition(fen) {
   const key = fen.split(' ').slice(0, 4).join(' ');
   const shard = await loadShard(shardOf(key, meta.shards));
   const rows = shard[key] || [];
-  const { ratingMin, ratingMax } = settings();
-  const use = meta.buckets.map((b, i) => (b >= ratingMin && b < ratingMax ? i : -1)).filter((i) => i >= 0);
-  const useAll = use.length ? use : meta.buckets.map((_, i) => i);
+  const { ratings, speeds } = settings();
+  const useGroup = meta.buckets.map((b) => !ratings.length || ratings.includes(b));
   const moves = [];
-  for (const row of rows) {
-    let w = 0, d = 0, b = 0;
-    for (const i of useAll) { w += row[1 + i * 3]; d += row[2 + i * 3]; b += row[3 + i * 3]; }
-    const games = w + d + b;
-    if (games > 0) moves.push({ san: row[0], uci: null, w, d, b, games, avg: 0 });
+  if (meta.layout === 'sparse') {
+    // rows are [san, cell, count, cell, count, ...]; cell = speed * (groups * 3) + group * 3 + result
+    const perSpeed = meta.buckets.length * 3;
+    const useSpeed = meta.speeds.map((s) => !speeds.length || speeds.includes(s));
+    for (const row of rows) {
+      const t = [0, 0, 0];
+      for (let k = 1; k < row.length; k += 2) {
+        const cell = row[k], within = cell % perSpeed;
+        if (useSpeed[(cell / perSpeed) | 0] && useGroup[(within / 3) | 0]) t[within % 3] += row[k + 1];
+      }
+      const games = t[0] + t[1] + t[2];
+      if (games > 0) moves.push({ san: row[0], uci: null, w: t[0], d: t[1], b: t[2], games, avg: 0 });
+    }
+  } else {
+    // older dense books: [san, w, d, b] for each rating group in turn, one time-control mix
+    for (const row of rows) {
+      let w = 0, d = 0, b = 0;
+      useGroup.forEach((on, i) => { if (on) { w += row[1 + i * 3]; d += row[2 + i * 3]; b += row[3 + i * 3]; } });
+      const games = w + d + b;
+      if (games > 0) moves.push({ san: row[0], uci: null, w, d, b, games, avg: 0 });
+    }
   }
   moves.sort((x, y) => y.games - x.games);
   const w = moves.reduce((a, m) => a + m.w, 0), d = moves.reduce((a, m) => a + m.d, 0), b = moves.reduce((a, m) => a + m.b, 0);

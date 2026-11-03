@@ -3,9 +3,14 @@
 
 const KEY = 'chessTrainer.v1';
 
+// The choices offered for the games a position's numbers are drawn from (the same ones Lichess's explorer has).
+export const SPEED_CHOICES = [['bullet', 'Bullet'], ['blitz', 'Blitz'], ['rapid', 'Rapid'], ['classical', 'Classical']];
+export const RATING_GROUPS = [400, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2500];   // each runs up to the next; 400 is "under 1000", 2500 is "2500+"
+
 export const DEFAULT_SETTINGS = {
-  ratingMin: 1600,           // bracket is [ratingMin, ratingMax)
-  ratingMax: 2000,
+  speeds: ['blitz', 'rapid', 'classical'],
+  ratings: [1600, 1800],     // groups of average rating (both players) to count
+
   botDelayMs: 180,
   sound: true,
   pieces: 'cburnett',        // Cburnett pieces, used under their BSD licence option (see pieces/cburnett/LICENSE.txt)
@@ -59,23 +64,53 @@ function fresh() {
 
 export function load() {
   state = fresh();
+  let raw0 = null;
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+    raw0 = raw;
     if (raw) {
       state = { ...state, ...raw, settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) } };
     }
   } catch (e) { /* corrupt or unavailable storage: start fresh */ }
+  const had = (raw0 && raw0.settings) || {};
+  if (!Array.isArray(had.ratings) && had.ratingMin != null) {   // an older version stored one bracket [min, max)
+    const picked = RATING_GROUPS.filter((g) => g >= had.ratingMin && g < (had.ratingMax || 3000));
+    if (picked.length) state.settings.ratings = picked;
+  }
+  delete state.settings.ratingMin; delete state.settings.ratingMax;
   if (state.settings.botDelayMs === 450 || state.settings.botDelayMs === 250) state.settings.botDelayMs = 180;   // older defaults; shorter feels better
   if (state.settings.engineDepth === 16) state.settings.engineDepth = 14;   // the previous default
   if (state.settings.varietyStrength === 0.6) state.settings.varietyStrength = 0.3;   // the previous default
   // The live Lichess explorer is gone: remove any token saved by an older version, and its cache.
-  for (const k of ['token', 'explorerBase', 'dataSource', 'speeds']) delete state.settings[k];
+  for (const k of ['token', 'explorerBase', 'dataSource']) delete state.settings[k];
   try { indexedDB.deleteDatabase('chess-trainer'); } catch (e) { /* ignore */ }
   return state;
 }
 
 export const S = () => state || load();
 export const settings = () => S().settings;
+
+/** "1600–2200" for a run of rating groups, or the groups listed when they are not side by side. */
+export function ratingLabel(ratings = settings().ratings) {
+  const idx = RATING_GROUPS.map((g, i) => (ratings.includes(g) ? i : -1)).filter((i) => i >= 0);
+  if (!idx.length) return 'all ratings';
+  const end = (i) => (i + 1 < RATING_GROUPS.length ? String(RATING_GROUPS[i + 1]) : '+');
+  const runs = [];
+  for (const i of idx) {
+    const last = runs[runs.length - 1];
+    if (last && last[1] === i - 1) last[1] = i; else runs.push([i, i]);
+  }
+  return runs.map(([a, b]) => {
+    const lo = a === 0 ? 'under' : RATING_GROUPS[a], hi = end(b);
+    if (a === 0) return b === 0 ? 'under 1000' : `under ${hi}`;
+    return hi === '+' ? `${lo}+` : `${lo}–${hi}`;
+  }).join(', ');
+}
+
+export function speedLabel(speeds = settings().speeds) {
+  const names = SPEED_CHOICES.filter(([k]) => speeds.includes(k)).map(([, n]) => n);
+  return !names.length || names.length === SPEED_CHOICES.length ? 'all time controls' : names.join(' · ');
+}
 
 export function save() {
   clearTimeout(timer);

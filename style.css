@@ -660,6 +660,16 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 /* the setup form is a compact box in the middle of the page, not a full-width bar */
 #setup { max-width: 480px; margin: min(9vh, 80px) auto 0; }
 
+/* which games to learn from: toggle buttons for time controls and rating groups */
+.filters { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
+.filterhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
+.filterrow { display: grid; gap: 5px; }
+.filterlabel { font-size: 12px; color: var(--muted, #9a9892); }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { flex: 1 1 auto; min-width: 44px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.chip:hover { background: rgba(255, 255, 255, 0.05); }
+.chip.on { background: #7fb64a; border-color: #7fb64a; color: #1b1a17; font-weight: 600; }
+
 /* phones and other touch screens only: nothing here applies to a desktop window */
 @media (max-width: 700px) {
   html { -webkit-text-size-adjust: 100%; }
