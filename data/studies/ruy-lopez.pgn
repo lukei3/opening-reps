@@ -1,0 +1,20 @@
+[Event "Ruy Lopez"]
+[StudyName "Ruy Lopez"]
+[ChapterName "Closed Ruy Lopez: main line"]
+[Orientation "white"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 {The Ruy Lopez. The bishop pressures the knight that guards e5.} a6 4. Ba4 Nf6 5. O-O {Castle first: if Black takes e4, you win the pawn back with Re1.} Be7 6. Re1 b5 7. Bb3 d6 8. c3 {Makes room for the bishop on c2 and prepares d4.} O-O 9. h3 {A useful waiting move that stops ...Bg4.} Nb8 {The Breyer Variation: the knight reroutes via d7.} (9... Na5 10. Bc2 c5 11. d4 Qc7 12. Nbd2 cxd4 13. cxd4 Nc6 14. Nb3 a5) 10. d4 Nbd7 11. Nbd2 Bb7 12. Bc2 Re8 13. Nf1 Bf8 14. Ng3 g6 {A classic manoeuvring battle.}
+
+[Event "Ruy Lopez"]
+[StudyName "Ruy Lopez"]
+[ChapterName "Berlin Defence"]
+[Orientation "white"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6 {The Berlin: solid and very popular at the top level.} 4. O-O Nxe4 5. d4 Nd6 6. Bxc6 dxc6 7. dxe5 Nf5 8. Qxd8+ Kxd8 {Queens are off, but Black's king is stuck in the middle.} 9. Nc3 Ke8 10. h3 h5 11. Bf4 Be7 12. Rad1 Be6 {A long endgame where White has a tiny edge.}
+
+[Event "Ruy Lopez"]
+[StudyName "Ruy Lopez"]
+[ChapterName "Exchange Variation"]
+[Orientation "white"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6 {Gives up the bishop pair to wreck Black's pawns.} dxc6 5. O-O f6 6. d4 exd4 7. Nxd4 c5 8. Nb3 Qxd1 9. Rxd1 Bg4 10. f3 Be6 11. Nc3 {White has the better pawn structure: a healthy four against three on the kingside.}

@@ -1,0 +1,16 @@
+[
+  { "id": "italian", "name": "Italian Game", "side": "w", "group": "Classic openings", "file": "italian.pgn",
+    "blurb": "Giuoco Piano and Two Knights: quick development and pressure on f7." },
+  { "id": "ruy-lopez", "name": "Ruy Lopez", "side": "w", "group": "Classic openings", "file": "ruy-lopez.pgn",
+    "blurb": "The oldest big opening: Closed, Berlin and Exchange." },
+  { "id": "queens-gambit", "name": "Queen's Gambit", "side": "w", "group": "Classic openings", "file": "queens-gambit.pgn",
+    "blurb": "1.d4 d5 2.c4: Declined and Accepted lines." },
+  { "id": "najdorf", "name": "Sicilian Najdorf", "side": "b", "group": "Classic openings", "file": "najdorf.pgn",
+    "blurb": "Black's fighting reply to 1.e4 against the English Attack, Be2 and Bg5." },
+  { "id": "caro-kann", "name": "Caro-Kann Defence", "side": "b", "group": "Classic openings", "file": "caro-kann.pgn",
+    "blurb": "A solid, sound defence to 1.e4: Classical, Advance and Exchange." },
+  { "id": "evans", "name": "Evans Gambit", "side": "w", "group": "Gambits", "file": "evans.pgn",
+    "blurb": "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4!? — a pawn for a big centre and a fast attack." },
+  { "id": "benko", "name": "Benko Gambit", "side": "b", "group": "Gambits", "file": "benko.pgn",
+    "blurb": "1.d4 Nf6 2.c4 c5 3.d5 b5!? — a pawn for lasting queenside pressure." }
+]

@@ -1,0 +1,20 @@
+[Event "Italian Game"]
+[StudyName "Italian Game"]
+[ChapterName "Giuoco Pianissimo: the quiet main line"]
+[Orientation "white"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 {The Italian Game. The bishop aims at f7, Black's weakest square, and you develop quickly.} Bc5 {The Giuoco Piano, "the quiet game".} 4. c3 {Prepares d4 to build a big centre.} Nf6 5. d3 {The modern, patient plan: keep the centre solid, castle, then bring the knight round with Nbd2-f1-g3.} d6 (5... a6 6. O-O d6 7. Bb3 Ba7 8. Re1 O-O 9. h3 h6 10. Nbd2 Re8 11. Nf1 Be6) 6. O-O O-O 7. Re1 a6 8. Bb3 Ba7 {Black keeps the bishop safe from d4 ideas.} 9. h3 {Stops ...Bg4 pinning your knight.} h6 10. Nbd2 Re8 11. Nf1 {The knight heads for g3 and f5.} Be6 12. Bxe6 Rxe6 13. Ng3 {A calm position with long-term chances on both wings.}
+
+[Event "Italian Game"]
+[StudyName "Italian Game"]
+[ChapterName "Giuoco Piano: the central break d4"]
+[Orientation "white"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 {The sharp main line: fight for the centre at once.} exd4 6. cxd4 Bb4+ 7. Bd2 {The solid way to answer the check.} Bxd2+ 8. Nbxd2 d5 {Black hits back in the centre.} 9. exd5 Nxd5 10. Qb3 Nce7 11. O-O O-O 12. Rfe1 c6 {Equal, but White has the more active pieces.}
+
+[Event "Italian Game"]
+[StudyName "Italian Game"]
+[ChapterName "Two Knights Defence: 4.Ng5"]
+[Orientation "white"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 {The Two Knights Defence counter-attacks e4.} 4. Ng5 {The aggressive reply: the knight attacks f7 together with the bishop.} d5 5. exd5 Na5 {Black's only good way to avoid losing a piece to a fork.} 6. Bb5+ c6 7. dxc6 bxc6 8. Be2 h6 9. Nf3 e4 10. Ne5 Bd6 11. d4 exd3 12. Nxd3 Qc7 {Black has given a pawn for the bishop pair and open lines.}

@@ -660,6 +660,38 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 /* the setup form is a compact box in the middle of the page, not a full-width bar */
 #setup { max-width: 480px; margin: min(9vh, 80px) auto 0; }
 
+/* studies */
+#tab-studies h3 { margin: 18px 0 8px; font-size: 14px; color: var(--muted, #9a9892); text-transform: uppercase; letter-spacing: 0.06em; }
+.stcards { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.stcard { position: relative; display: flex; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
+.stcard:hover { border-color: #7fb64a; }
+.stopen { flex: 1 1 auto; display: grid; gap: 3px; text-align: left; padding: 12px 14px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.stname { font-weight: 650; }
+.stmeta { font-size: 13px; color: var(--muted, #9a9892); }
+.stdel { flex: 0 0 40px; border: 0; border-left: 1px solid var(--line); border-radius: 0 10px 10px 0; font-size: 20px; }
+#stImport { margin-top: 20px; }
+#stImport .row { display: flex; gap: 8px; }
+#stUrl { flex: 1 1 auto; min-width: 0; }
+.stpgn { margin-top: 10px; }
+.stpgn summary { cursor: pointer; color: var(--muted, #9a9892); font-size: 14px; }
+#stPgn { width: 100%; margin: 8px 0; box-sizing: border-box; font: 13px ui-monospace, Menlo, Consolas, monospace; }
+.stfile { display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.stmsg { margin-top: 10px; font-size: 14px; min-height: 18px; color: var(--good, #7fb64a); }
+.stmsg.err { color: var(--bad, #d9604c); }
+.stbar { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.sttitle { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stchapter { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.stchapter:first-child { border-top: 0; }
+#stTrain:not([hidden]) { display: grid; gap: 14px; }
+#stTrain .stbar { grid-column: 1 / -1; margin-bottom: 0; }
+#stBoard { width: 100%; }
+.stcoach { min-height: 120px; }
+.stcoach p { margin: 0 0 8px; }
+.stcoach h3 { margin: 6px 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: inherit; }
+@media (min-width: 980px) {
+  #stTrain:not([hidden]) { grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); align-items: start; }
+}
+
 /* which games to learn from: toggle buttons for time controls and rating groups */
 .filters { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
 .filterhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
@@ -678,6 +710,11 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
   input, select, textarea { font-size: 16px; }   /* anything smaller makes iPhones zoom in when a field is tapped */
   #setup { margin-top: 12px; }
   #tabs button { min-height: 40px; }
+  #tabs { gap: 2px; }
+  #tabs button { padding-left: 9px; padding-right: 9px; font-size: 14px; }
+  header.top h1 { font-size: 16px; gap: 6px; }
+  header.top h1 .logo { width: 22px; height: 22px; }
+  .stbar button { white-space: nowrap; }
   .engmeta { display: none; }
   .englines, .tablewrap { -webkit-overflow-scrolling: touch; }
 }
