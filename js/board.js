@@ -23,7 +23,10 @@ export class Board {
     this.check = null;
     this.drag = null;
     this.canMove = true;     // false while the opponent is to move: you may pick a piece up, but nothing is played
+    this.premoveOn = !!opts.premove;   // with this on, a move made while canMove is false is queued as a premove
+    this.premoves = [];                // queued moves [{from, to}], played in order once it is your turn
     el.classList.add('board');
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.premoves.length) this.clearPremoves(); });
     this.marks = { arrows: [], circles: [] };   // the user's own annotations (right-click)
     this.rc = null;
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -138,6 +141,63 @@ export class Board {
   }
   setArrows(arrows) { this.arrows = arrows || []; this.render(); }
 
+  // ---- premoves (chess.com style): queue moves while the opponent is to move; right-click, Escape or a tap on a queued square cancels them ----
+
+  /** The pieces as they will stand once every queued premove has been played. */
+  virtualPieces() {
+    const v = { ...this.pieces };
+    for (const pm of this.premoves) {
+      const pc = v[pm.from];
+      if (!pc) continue;
+      delete v[pm.from]; v[pm.to] = pc;
+    }
+    return v;
+  }
+
+  /** Where a piece could go if nothing else changed: its own way of moving, blocked by pieces, ignoring checks. */
+  pseudoTargets(from, pcs) {
+    const pc = pcs[from];
+    if (!pc) return [];
+    const col = pc[0], kind = pc[1];
+    const f0 = FILES.indexOf(from[0]), r0 = parseInt(from[1], 10);
+    const out = [];
+    const at = (f, r) => (f >= 0 && f < 8 && r >= 1 && r <= 8 ? FILES[f] + r : null);
+    const add = (sq, captureOnly = false) => {
+      if (!sq) return false;
+      const o = pcs[sq];
+      if (o && o[0] === col) return false;
+      if (captureOnly && !o) return false;
+      out.push(sq);
+      return !o;                      // a sliding piece goes on only through empty squares
+    };
+    const slide = (dirs) => { for (const [df, dr] of dirs) { let f = f0 + df, r = r0 + dr; while (add(at(f, r))) { f += df; r += dr; } } };
+    if (kind === 'N') {
+      for (const [df, dr] of [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]) add(at(f0 + df, r0 + dr));
+    } else if (kind === 'K') {
+      for (let df = -1; df <= 1; df++) for (let dr = -1; dr <= 1; dr++) { if (df || dr) add(at(f0 + df, r0 + dr)); }
+    } else if (kind === 'R') {
+      slide([[1, 0], [-1, 0], [0, 1], [0, -1]]);
+    } else if (kind === 'B') {
+      slide([[1, 1], [1, -1], [-1, 1], [-1, -1]]);
+    } else if (kind === 'Q') {
+      slide([[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]);
+    } else if (kind === 'P') {
+      const dir = col === 'w' ? 1 : -1;
+      const one = at(f0, r0 + dir);
+      if (one && !pcs[one]) {
+        out.push(one);
+        const two = at(f0, r0 + 2 * dir);
+        if ((col === 'w' ? r0 === 2 : r0 === 7) && two && !pcs[two]) out.push(two);
+      }
+      for (const df of [-1, 1]) { const d = at(f0 + df, r0 + dir); if (d && !(pcs[d] && pcs[d][0] === col)) out.push(d); }
+    }
+    return out;
+  }
+
+  addPremove(from, to) { this.premoves.push({ from, to }); this.render(); }
+  shiftPremove() { const pm = this.premoves.shift(); this.render(); return pm; }
+  clearPremoves() { if (!this.premoves.length) return; this.premoves = []; this.selected = null; this.targets = []; this.render(); }
+
   sqAt(clientX, clientY) {
     const r = this.el.getBoundingClientRect();
     const x = Math.floor(((clientX - r.left) / r.width) * 8);
@@ -153,6 +213,7 @@ export class Board {
 
   onDown(e) {
     if (e.button === 2) {
+      if (this.premoves.length) { this.clearPremoves(); e.preventDefault(); return; }   // right-click cancels premoves, as on chess.com
       const from = this.sqAt(e.clientX, e.clientY);
       if (from) this.rc = { from, color: this.markColor(e) };
       e.preventDefault();
@@ -162,11 +223,14 @@ export class Board {
     if (!this.enabled) return;
     const sq = this.sqAt(e.clientX, e.clientY);
     if (!sq) return;
-    const pc = this.pieces[sq];
-    if (this.canMove && this.selected && this.targets.includes(sq)) { this.finish(this.selected, sq); e.preventDefault(); return; }
+    const premoving = this.premoveOn && !this.canMove;
+    const pcs = this.premoves.length ? this.virtualPieces() : this.pieces;
+    const pc = pcs[sq];
+    if ((this.canMove || premoving) && this.selected && this.targets.includes(sq)) { this.finish(this.selected, sq); e.preventDefault(); return; }
+    if (premoving && !this.selected && this.premoves.some((p) => p.from === sq || p.to === sq)) { this.clearPremoves(); e.preventDefault(); return; }
     if (pc && pc[0] === this.userColor) {
       this.selected = sq;
-      this.targets = this.opts.getTargets(sq);
+      this.targets = premoving ? this.pseudoTargets(sq, pcs) : this.opts.getTargets(sq);
       this.drag = { from: sq, moved: false, x: e.clientX, y: e.clientY, pc };
       this.render();
       e.preventDefault();
@@ -202,8 +266,8 @@ export class Board {
     if (d.ghost) d.ghost.remove();
     if (d.moved) {
       const sq = this.sqAt(e.clientX, e.clientY);
-      if (this.canMove && sq && this.targets.includes(sq)) { this.finish(d.from, sq, true); return; }
-      if (this.canMove) { this.selected = null; this.targets = []; }   // otherwise keep holding it until the opponent has moved
+      if ((this.canMove || this.premoveOn) && sq && this.targets.includes(sq)) { this.finish(d.from, sq, true); return; }
+      if (this.canMove || this.premoveOn) { this.selected = null; this.targets = []; }   // otherwise keep holding it until the opponent has moved
     }
     this.render();
   }
@@ -211,7 +275,8 @@ export class Board {
   finish(from, to, dragged = false) {
     this._skipAnim = dragged;   // a dragged piece is already at its destination; a tap-tap move should slide
     this.selected = null; this.targets = [];
-    this.opts.onMove(from, to);
+    if (this.canMove) this.opts.onMove(from, to);
+    else this.addPremove(from, to);   // the opponent is to move: queue it
   }
 
   /**
@@ -268,6 +333,8 @@ export class Board {
     if (!this.cells) this.build();
     this.preload();
     this.layout();
+    const shown = this.premoves.length ? this.virtualPieces() : this.pieces;   // queued premoves are drawn as if already played
+    const pmSquares = new Set(this.premoves.flatMap((p) => [p.from, p.to]));
     for (const sq in this.cells) {
       const c = this.cells[sq];
       const light = (FILES.indexOf(sq[0]) + parseInt(sq[1], 10)) % 2 === 0; // a1 is a dark square
@@ -275,9 +342,10 @@ export class Board {
       if (this.lastMove && (sq === this.lastMove[0] || sq === this.lastMove[1])) cls += ' last';
       if (sq === this.selected) cls += ' sel';
       if (sq === this.check) cls += ' check';
+      if (pmSquares.has(sq)) cls += ' pm';
       if (c.cls !== cls) { c.el.className = cls; c.cls = cls; }
 
-      const pc = this.pieces[sq];
+      const pc = shown[sq];
       const hidden = this.drag && this.drag.ghost && this.drag.from === sq;
       const want = pc && !hidden ? pc : null;
       const src = want ? pieceSrc(want) : '';
@@ -298,7 +366,8 @@ export class Board {
   }
 
   arrowsSvg() {
-    const all = [...this.arrows, ...this.marks.arrows];
+    const premoveArrows = this.premoves.map((p) => ({ from: p.from, to: p.to, color: '#d63e32', opacity: 0.55, width: 0.14 }));
+    const all = [...this.arrows, ...this.marks.arrows, ...premoveArrows];
     const circles = this.marks.circles.map((c) => {
       const [x, y] = this.xy(c.sq);
       return `<circle cx="${x}" cy="${y}" r="0.44" fill="none" stroke="${c.color}" stroke-width="0.11" opacity="0.7"/>`;

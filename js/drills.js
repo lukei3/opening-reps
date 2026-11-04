@@ -2,7 +2,7 @@
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import * as store from './store.js';
-import { bestMove, warmUp } from './engine.js';
+import { analyse, prefetch, cancelPrefetch, bestMove, warmUp } from './engine.js';
 import { play, moveSound } from './sounds.js';
 
 const $ = (id) => document.getElementById(id);
@@ -71,6 +71,7 @@ export function makePosition(kind) {
 const board = new Board($('drBoard'), {
   getTargets: (from) => (R ? R.chess.moves({ square: from, verbose: true }).map((m) => m.to) : []),
   onMove: (from, to) => onUserMove(from, to),
+  premove: true,
 });
 
 function chip(attr, val, label, on) {
@@ -105,6 +106,7 @@ export function showDrills() {
 
 let R = null;     // the position being played
 export const currentFen = () => (R ? R.chess.fen() : null);
+export const drillBoard = () => board;
 let seq = 0;
 let streak = 0;
 let timer = null;
@@ -117,7 +119,7 @@ const pieceMap = (g) => {
 const lastMoveOf = (g) => { const h = g.history({ verbose: true }); const l = h[h.length - 1]; return l ? [l.from, l.to] : null; };
 const kingSquare = (g, color) => { for (const row of g.board()) for (const p of row) if (p && p.type === 'k' && p.color === color) return p.square; return null; };
 
-function stopRun() { if (R) R.id = -1; R = null; clearInterval(timer); timer = null; board.setEnabled(false); board.setArrows([]); }
+function stopRun() { if (R) R.id = -1; R = null; clearInterval(timer); timer = null; board.clearPremoves(); board.setEnabled(false); board.setArrows([]); cancelPrefetch(); }
 function setStatus(text, cls = '') { const el = $('drStatus'); el.textContent = text; el.className = 'status ' + cls; }
 
 function render() {
@@ -144,12 +146,40 @@ function startPosition(kindId, seconds) {
   $('drSetup').hidden = true; $('drPlay').hidden = false; $('drResult').hidden = true;
   $('drTitle').textContent = `${kind.name} mate · ${TIMES.find(([s]) => s === seconds)[1]}`;
   $('drStreak').textContent = streak ? `Streak ${streak}` : '';
+  board.clearPremoves();
   render();
   board.setEnabled(true, R.user);
+  board.canMove = true;
   setStatus('Mate before the clock runs out', '');
   R.turnStart = performance.now();
   timer = setInterval(tick, 50);
   tick();
+  prefetchReplies();
+}
+
+// The opponent answers instantly, like a premoving human: while you think, the engine works out its reply to each move
+// you could play (the engine keeps every result, so a reply it has already found costs nothing).
+const REPLY_DEPTH = 8;
+function prefetchReplies() {
+  const g = R.chess, fen = g.fen();
+  const weight = (m) => (m.san.includes('#') ? 3 : m.san.includes('+') ? 2 : m.captured ? 1 : 0);
+  const moves = g.moves({ verbose: true }).sort((a, b) => weight(b) - weight(a));   // the likeliest moves first
+  for (const m of moves) {
+    const c = new Chess(fen);
+    c.move(m);
+    if (!c.isGameOver()) prefetch(c.fen(), REPLY_DEPTH, 1);
+  }
+}
+
+/** Play the next queued premove if it is legal now; one that is not cancels the rest. */
+function runPremoves() {
+  if (!R || R.over || R.chess.turn() !== R.user) return;
+  const pm = board.premoves[0];
+  if (!pm) return;
+  const legal = R.chess.moves({ square: pm.from, verbose: true }).some((m) => m.to === pm.to);
+  board.shiftPremove();
+  if (legal) onUserMove(pm.from, pm.to);
+  else board.clearPremoves();
 }
 
 function pauseClock() { if (R.turnStart) { R.left -= performance.now() - R.turnStart; R.turnStart = 0; } }
@@ -168,22 +198,23 @@ async function onUserMove(from, to) {
   play(moveSound(mv, g));
   if (g.isCheckmate()) { end(true, 'Checkmate'); return; }
   if (g.isGameOver()) { end(false, g.isStalemate() ? 'Stalemate: no legal moves left, but not in check' : 'Draw: not enough material left to mate'); return; }
-  board.setEnabled(false);
-  const t0 = performance.now();
+  board.setEnabled(true, R.user);
+  board.canMove = false;                     // you may queue premoves while the opponent replies
   let uci = null;
-  try { uci = await bestMove(g.fen(), 100); } catch (e) { uci = null; }
+  try { const r = await analyse(g.fen(), REPLY_DEPTH, 1, 1); uci = r && r.best; } catch (e) { uci = null; }
   if (!R || R.id !== id) return;
+  cancelPrefetch();                          // the answers to the moves you did not play are no longer needed
   const replies = g.moves({ verbose: true });
   let reply = replies.find((m) => m.from + m.to + (m.promotion || '') === uci);
   if (!reply) reply = replies[rand(replies.length)];
-  await sleep(Math.max(0, 140 - (performance.now() - t0)));
-  if (!R || R.id !== id) return;
   const rm = g.move(reply);
   render();
   play(moveSound(rm, g));
   if (g.isGameOver()) { end(false, 'Draw: the position repeated or the fifty-move rule applied'); return; }
-  board.setEnabled(true, R.user);
+  board.canMove = true;
   R.turnStart = performance.now();
+  prefetchReplies();
+  runPremoves();
 }
 
 function end(won, why) {
@@ -191,7 +222,9 @@ function end(won, why) {
   pauseClock();
   R.over = true;
   clearInterval(timer);
+  board.clearPremoves();
   board.setEnabled(false);
+  cancelPrefetch();
   const d = data(), k = R.kind.id;
   const used = R.seconds * 1000 - Math.max(0, R.left);
   let line;

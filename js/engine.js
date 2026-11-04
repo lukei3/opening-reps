@@ -101,6 +101,7 @@ function cached(key, fen, go, multipv, prio) {
   const job = enqueue(key, fen, go, multipv, prio);
   const result = job.promise.then((r) => { if (!r) cache.delete(key); return r; });
   cache.set(key, result);
+  if (cache.size > 8000) cache.delete(cache.keys().next().value);   // keep the oldest results from piling up in a long session
   return result;
 }
 
