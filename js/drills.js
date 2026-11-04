@@ -221,21 +221,20 @@ function countIn(run, steps) {
   return new Promise((resolve) => {
     const el = $('drCount');
     const side = run.user === 'w' ? 'White' : 'Black';
-    const up = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 13h5.5v8h7v-8H21z"/></svg>';
+    const chev = '<svg class="drc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>';
     el.innerHTML = `
-      <div class="drc-edge left">${up}${up}${up}</div>
-      <div class="drc-edge right">${up}${up}${up}</div>
+      <div class="drc-way"><svg viewBox="0 0 14 100" preserveAspectRatio="none" aria-hidden="true"><path d="M7 98V4M1.5 11 7 4l5.5 7"/></svg></div>
       <div class="drc-card">
-        <div class="drc-side ${run.user === 'w' ? 'white' : 'black'}">YOU ARE <b>${side.toUpperCase()}</b></div>
-        <div class="drc-bigarrow">${up}</div>
-        <div class="drc-dir">Your pieces move <b>UP</b> the board</div>
-        <div class="drc-dir2">${run.user === 'b' ? 'The board is turned around for you, so you are at the bottom.' : 'You are at the bottom; the engine is at the top.'}</div>
-        <div class="drc-num" id="drNum">${steps}</div>
-        <div class="drc-sub">${run.chess.turn() === run.user ? 'You move first' : 'The engine moves first'} · tap to start now</div>
-        <button type="button" class="drc-off">Turn off the count-in</button>
+        <img class="drc-king" src="pieces/cburnett/${run.user}K.svg" alt="">
+        <div class="drc-title">You play ${side}</div>
+        <div class="drc-line">${chev}<span>Your pieces move up the board</span></div>
+        <div class="drc-note">${run.user === 'b' ? 'The board is turned around so you are at the bottom. ' : ''}${run.chess.turn() === run.user ? 'You move first.' : 'The engine moves first.'}</div>
+        <div class="drc-ring"><svg viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" cx="22" cy="22" r="18" style="animation-duration:${steps}s"/></svg><span id="drNum">${steps}</span></div>
+        <div class="drc-actions"><button type="button" class="drc-go">Start now</button><button type="button" class="drc-off">Turn off the count-in</button></div>
       </div>`;
     el.hidden = false;
     el.querySelector('.drc-off').onclick = (e) => { e.stopPropagation(); prefs().countIn = false; store.save(); finish(); };
+    el.querySelector('.drc-go').onclick = (e) => { e.stopPropagation(); finish(); };
     let n = steps;
     const finish = () => { clearInterval(iv); window.removeEventListener('keydown', onKey); el.hidden = true; el.onclick = null; resolve(); };
     const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish(); } };
