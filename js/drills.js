@@ -2,7 +2,7 @@
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import * as store from './store.js';
-import { analyse, evaluate, prefetch, cancelPrefetch, bestMove, warmUp } from './engine.js';
+import { analyse, evaluate, prefetch, prefetchEval, cancelPrefetch, bestMove, warmUp } from './engine.js';
 import { play, moveSound } from './sounds.js';
 
 const $ = (id) => document.getElementById(id);
@@ -26,7 +26,7 @@ const data = () => {
 };
 const prefs = () => {
   const p = store.S().prefs;
-  p.drill = { mode: 'mate', kind: 'kq', time: 60, cat: 'all', ctime: 'real', countIn: true, ...(p.drill || {}) };
+  p.drill = { mode: 'mate', kind: 'kq', time: 60, cat: 'all', ctime: 'real', countIn: true, stopAtMistake: true, ...(p.drill || {}) };
   return p.drill;
 };
 
@@ -116,6 +116,8 @@ function renderSetup() {
     ? 'Real positions from Lichess games, with the clock you really had. The side that was winning is yours: convert it to checkmate before your time runs out. The engine defends.'
     : 'Deliver checkmate before your clock runs out. You play the stronger side from a random position, and the engine defends as well as it can.';
   $('drCountToggle').checked = p.countIn !== false;
+  $('drMistakeRow').hidden = !convert;
+  $('drMistakeToggle').checked = p.stopAtMistake !== false;
   const d = data();
   if (convert) {
     $('drLevels').innerHTML = LEVELS.map(([k, l]) => chip('level', k, l, (p.level || 'any') === k)).join('');
@@ -135,6 +137,7 @@ function renderSetup() {
   }
 }
 
+$('drMistakeToggle').addEventListener('change', () => { prefs().stopAtMistake = $('drMistakeToggle').checked; store.save(); });
 $('drCountToggle').addEventListener('change', () => { prefs().countIn = $('drCountToggle').checked; store.save(); });
 $('drModes').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) { prefs().mode = b.dataset.mode; store.save(); renderSetup(); } });
 $('drKinds').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) { prefs().kind = b.dataset.kind; store.save(); renderSetup(); } });
@@ -295,6 +298,7 @@ async function startConvert() {
 const REPLY_DEPTH = 8;
 function prefetchReplies() {
   const g = R.chess, fen = g.fen();
+  if (R.convert) prefetchEval(fen, 12);       // the engine's view of this position, ready for judging your move
   const weight = (m) => (m.san.includes('#') ? 3 : m.san.includes('+') ? 2 : m.captured ? 1 : 0);
   const moves = g.moves({ verbose: true }).sort((a, b) => weight(b) - weight(a));   // the likeliest moves first
   for (const m of moves) {
@@ -339,6 +343,7 @@ async function onUserMove(from, to, autoPromote = false) {
   }
   pauseClock();
   if (R.left <= 0) { end(false, 'Out of time'); return; }
+  const fenBefore = g.fen(), leftBefore = R.left, plyBefore = g.history().length;
   const mv = g.move({ from, to, promotion });
   R.moves += 1;
   R.left += R.inc * 1000;                    // the increment, as on a real clock
@@ -347,6 +352,60 @@ async function onUserMove(from, to, autoPromote = false) {
   if (g.isCheckmate()) { end(true, 'Checkmate'); return; }
   if (g.isGameOver()) { end(false, g.isStalemate() ? 'Stalemate: no legal moves left, but not in check' : 'Draw: not enough material left to mate'); return; }
   opponentTurn();
+  // in Convert mode the engine quietly judges every move you make; the reply above has already been queued first
+  if (R.convert && prefs().stopAtMistake !== false) judgeMove({ run: R, fenBefore, fenAfter: g.fen(), san: mv.san, plyBefore, leftBefore, user: R.user });
+}
+
+// ---------- stopping at a mistake ----------
+
+const CAP_CP = 600;       // anything better than this is simply "winning": a slower win is not a mistake
+/** An evalFor() result as centipawns from the player's side, capped. */
+function userCp(r, user) {
+  if (!r) return null;
+  if (r.text) return r.text === 'Mate' ? (r.cls === user ? CAP_CP : -CAP_CP) : 0;
+  const white = r.mate != null && r.mate !== 0 ? (r.mate > 0 ? CAP_CP : -CAP_CP) : r.cp;
+  return Math.max(-CAP_CP, Math.min(CAP_CP, user === 'w' ? white : -white));
+}
+
+async function judgeMove(j) {
+  const [pre, post] = await Promise.all([evalFor(j.fenBefore), evalFor(j.fenAfter)]);
+  if (!R || R.id !== j.run.id || R.over) return;
+  const a = userCp(pre, j.user), b = userCp(post, j.user);
+  if (a == null || b == null) return;
+  // a mistake: from a clearly winning position to one that is no longer clearly winning
+  if (a >= 250 && (b < 150 || (b < 300 && a - b >= 300))) onMistake(j, a, b);
+}
+
+const pawnsFmt = (cp) => (cp >= 0 ? '+' : '−') + (Math.abs(cp) / 100).toFixed(1);
+
+async function onMistake(j, a, b) {
+  const run = j.run;
+  pauseClock();
+  run.over = true;
+  clearInterval(timer);
+  board.clearPremoves(); board.setEnabled(false); cancelPrefetch();
+  const d = data(); d.fails.cv = (d.fails.cv || 0) + 1; streak = 0; store.save();
+  $('drStreak').textContent = '';
+  play('check');
+  setStatus('Mistake. Look around, then take it back.', 'mistake');
+  let best = null;
+  try { const r = await analyse(j.fenBefore, 14, 1, 1); best = r && r.best; } catch (e) { best = null; }
+  if (R !== run) return;
+  let bestSan = null;
+  if (best) { try { bestSan = new Chess(j.fenBefore).move({ from: best.slice(0, 2), to: best.slice(2, 4), promotion: best[4] }).san; } catch (e) { bestSan = null; } }
+  const what = b < -150 ? 'a losing one' : b < 150 ? 'a drawn one' : 'a much smaller edge';
+  openAnalysis(j.plyBefore, {
+    j,
+    html: `<b>Mistake.</b> ${esc(j.san)} turns a winning position (${pawnsFmt(a)} for you) into ${what} (${pawnsFmt(b)}).${bestSan ? ` The engine's choice was <b>${esc(bestSan)}</b>, shown by the arrow.` : ''} Step forward with ▶ to see what happens.`,
+  });
+}
+
+/** Put the position back to just before the mistake, with the clock as it was, and play on. */
+function takeBack() {
+  const m = A && A.mistake;
+  if (!m || !R) return;
+  const spec = R.spec;
+  begin({ ...spec, fen: m.j.fenBefore, seconds: Math.max(5, Math.ceil(m.j.leftBefore / 1000)), skipCountIn: true, retrySpec: spec.retrySpec || spec });
 }
 
 async function opponentTurn() {
@@ -422,7 +481,7 @@ $('drSkip').addEventListener('click', () => { if (R && R.again) R.again(); });
 /** Play the same position again from the start, with a fresh clock and no count-in (you already know the position). */
 function retry() {
   if (!R || !R.spec) return;
-  begin({ ...R.spec, skipCountIn: true });
+  begin({ ...(R.spec.retrySpec || R.spec), skipCountIn: true });   // after a take-back, Retry still means the original position
 }
 $('drRetry').addEventListener('click', retry);
 window.addEventListener('keydown', (e) => {
@@ -488,13 +547,19 @@ function pvText(fen, ucis, max = 9) {
   return out.trim();
 }
 
-function openAnalysis() {
+function openAnalysis(startIdx = 0, mistake = null) {
   if (!R || !R.spec) return;
   if (!R.over) end(false, 'You gave up to see the analysis');     // an attempt you stop to analyse counts as a miss
   const game = buildLine(R.spec.fen, R.chess.history({ verbose: true }));
-  A = { token: ++seq, user: R.user, startFen: R.spec.fen, which: 'game', idx: 0, lines: { game, plan: null } };
+  A = { token: ++seq, user: R.user, startFen: R.spec.fen, which: 'game', idx: Math.min(startIdx, game.fens.length - 1), mistake, lines: { game, plan: null } };
   $('drSide').classList.add('analysing');
   $('drAna').hidden = false;
+  const note = $('drAnaNote');
+  note.hidden = !mistake;
+  if (mistake) {
+    note.innerHTML = `<div>${mistake.html}</div><div class="row"><button type="button" class="primary" id="drTakeBack">Take it back and try again</button></div>`;
+    $('drTakeBack').onclick = () => takeBack();
+  }
   document.querySelectorAll('#drAna .dra-tabs .chip').forEach((b) => b.classList.toggle('on', b.dataset.line === 'game'));
   board.clearPremoves(); board.setEnabled(false);
   renderAnalysis();
@@ -506,6 +571,7 @@ function closeAnalysis() {
   A = null;
   $('drSide').classList.remove('analysing');
   $('drAna').hidden = true;
+  $('drAnaNote').hidden = true;
   cancelPrefetch();
   if (R) render();                                 // the board shows the real position again
 }

@@ -184,6 +184,7 @@
         <div class="filterrow"><span class="filterlabel">Time on the clock</span><div id="drCTimes" class="chips"></div></div>
       </div>
       <p id="drBests" class="muted small"></p>
+      <label class="check drcheck" id="drMistakeRow" hidden><input type="checkbox" id="drMistakeToggle"><span>Stop at my first mistake and show the analysis (Convert mode)</span></label>
       <label class="check drcheck"><input type="checkbox" id="drCountToggle"><span>5-second count-in before each position (which side you are, and which way you go)</span></label>
       <div class="row"><button id="drStart" class="primary" type="button">Start</button></div>
     </div>
@@ -209,6 +210,7 @@
           <div id="drResult" class="card stcoach" hidden></div>
           <div id="drAna" class="card dranalysis" hidden>
             <div class="dra-head"><b>Analysis</b><button id="drAnaClose" class="ghost" type="button">‹ Back to the result</button></div>
+            <div id="drAnaNote" class="dra-notebox" hidden></div>
             <div class="chips dra-tabs"><button type="button" class="chip on" data-line="game">Your game</button><button type="button" class="chip" data-line="plan">Winning plan</button></div>
             <div id="drAnaMoves" class="dra-moves"></div>
             <div class="dra-nav">

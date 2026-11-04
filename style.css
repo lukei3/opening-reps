@@ -769,6 +769,10 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 .dranalysis { display: grid; gap: 12px; }
 .dra-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dra-tabs .chip { flex: 1 1 0; }
+.dra-notebox { padding: 10px 12px; border-left: 3px solid #e69d00; border-radius: 6px; background: rgba(230, 157, 0, 0.1); font-size: 14px; line-height: 1.45; }
+.dra-notebox[hidden] { display: none; }
+.dra-notebox b { color: #f3b73c; }
+.dra-notebox .row { margin-top: 10px; }
 .dra-moves { max-height: 200px; overflow-y: auto; padding: 4px 2px; font-size: 14px; line-height: 2.1; }
 .dra-no { color: #8e8a82; margin: 0 3px 0 6px; font-size: 13px; }
 .dra-ply { display: inline-flex; align-items: center; gap: 5px; padding: 1px 6px; border-radius: 6px; cursor: pointer; }
