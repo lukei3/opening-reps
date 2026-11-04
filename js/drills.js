@@ -90,7 +90,10 @@ const fmtTime = (ms) => {
 // ---------- real positions (Convert mode) ----------
 
 const CATS = [['all', 'Any'], ['pawns', 'Pawns: promote'], ['rook', 'Rook endings'], ['queen', 'Queen'], ['ladder', 'Ladder mate'], ['mixed', 'Mixed']];
-const CTIMES = [['real', 'Real clock'], [30, '30 s'], [60, '1 min'], [120, '2 min'], [180, '3 min']];
+const CTIMES = [['real', 'Real clock'], [30, '30 s'], [60, '1 min'], [120, '2 min'], [180, '3 min'], [300, '5 min']];
+const LEVELS = [['any', 'Any'], ['standard', 'Straightforward'], ['tricky', 'Tricky']];
+const levelOf = (e) => e.level || 'standard';
+const inSet = (e, p) => (p.cat === 'all' || e.cat.includes(p.cat)) && (!p.level || p.level === 'any' || levelOf(e) === p.level);
 let bank = null;
 async function loadBank() {
   if (bank) return bank;
@@ -115,11 +118,12 @@ function renderSetup() {
   $('drCountToggle').checked = p.countIn !== false;
   const d = data();
   if (convert) {
+    $('drLevels').innerHTML = LEVELS.map(([k, l]) => chip('level', k, l, (p.level || 'any') === k)).join('');
     $('drCats').innerHTML = CATS.map(([k, l]) => chip('cat', k, l, p.cat === k)).join('');
     $('drCTimes').innerHTML = CTIMES.map(([k, l]) => chip('ctime', k, l, String(p.ctime) === String(k))).join('');
     const wins = d.wins['cv'] || 0, fails = d.fails['cv'] || 0;
     loadBank().then((b) => {
-      const n = b.filter((e) => p.cat === 'all' || e.cat.includes(p.cat)).length;
+      const n = b.filter((e) => inSet(e, p)).length;
       $('drBests').textContent = (n ? `${n} position${n === 1 ? '' : 's'} in this set. ` : 'No positions in this set yet. ') + (wins || fails ? `Converted ${wins}, missed ${fails}.` : '');
     });
   } else {
@@ -135,6 +139,7 @@ $('drCountToggle').addEventListener('change', () => { prefs().countIn = $('drCou
 $('drModes').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) { prefs().mode = b.dataset.mode; store.save(); renderSetup(); } });
 $('drKinds').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) { prefs().kind = b.dataset.kind; store.save(); renderSetup(); } });
 $('drTimes').addEventListener('click', (e) => { const b = e.target.closest('[data-time]'); if (b) { prefs().time = +b.dataset.time; store.save(); renderSetup(); } });
+$('drLevels').addEventListener('click', (e) => { const b = e.target.closest('[data-level]'); if (b) { prefs().level = b.dataset.level; store.save(); renderSetup(); } });
 $('drCats').addEventListener('click', (e) => { const b = e.target.closest('[data-cat]'); if (b) { prefs().cat = b.dataset.cat; store.save(); renderSetup(); } });
 $('drCTimes').addEventListener('click', (e) => { const b = e.target.closest('[data-ctime]'); if (b) { const v = b.dataset.ctime; prefs().ctime = v === 'real' ? 'real' : +v; store.save(); renderSetup(); } });
 
@@ -223,7 +228,6 @@ function countIn(run, steps) {
     const side = run.user === 'w' ? 'White' : 'Black';
     const arrow = '<svg class="drc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 12.5H9.5V21h5v-8.5h5z"/></svg>';
     el.innerHTML = `
-      <div class="drc-way"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 12.5H9.5V21h5v-8.5h5z"/></svg><i></i></div>
       <div class="drc-card">
         <img class="drc-king" src="pieces/cburnett/${run.user}K.svg" alt="">
         <div class="drc-title">You play ${side}</div>
@@ -264,7 +268,7 @@ const parseInc = (tc) => { const m = /^\d+\+(\d+)$/.exec(tc || ''); return m ? +
 async function startConvert() {
   const p = prefs();
   const all = await loadBank();
-  const pool = all.map((e, i) => ({ e, i })).filter(({ e }) => p.cat === 'all' || e.cat.includes(p.cat));
+  const pool = all.map((e, i) => ({ e, i })).filter(({ e }) => inSet(e, p));
   if (!pool.length) { $('drBests').textContent = 'No positions in this set yet. Try another set.'; showDrills(); return; }
   const fresh = pool.filter(({ i }) => !recent.includes(i));
   const choices = fresh.length ? fresh : pool;
@@ -274,7 +278,7 @@ async function startConvert() {
   const seconds = real ? Math.max(20, Math.min(300, Math.round(e.wc))) : +p.ctime;
   const inc = real ? parseInc(e.tc) : 0;
   const catName = (CATS.find(([k]) => k === (p.cat === 'all' ? e.cat[0] : p.cat)) || [0, 'Mixed'])[1];
-  const where = e.synthetic ? 'A practice position.' :
+  const where = e.synthetic ? (levelOf(e) === 'tricky' ? 'A tricky practice position: it is winning, but only one or two moves keep the win, so look for the plan.' : 'A practice position.') :
     `From a real ${esc(e.ev || 'online')} game${e.tc ? ` (${esc(e.tc.replace('+', ' + '))})` : ''}${e.elo ? `, rated about ${e.elo}` : ''}. In the game you had ${fmtTime(e.wc * 1000)} s and your opponent ${fmtTime(e.lc * 1000)} s.${e.site ? ` <a href="https://lichess.org/${esc(e.site)}" target="_blank" rel="noopener">See the game</a>` : ''}`;
   begin({
     id: 'cv', name: 'Convert', convert: true, title: `Convert · ${catName} · ${real ? 'real clock' : seconds + ' s'}`, fen: e.fen, user: e.winner, seconds, inc,
