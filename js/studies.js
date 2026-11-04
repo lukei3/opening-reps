@@ -64,6 +64,15 @@ export async function showStudies() {
 
 function sideLabel(side) { return side === 'b' ? 'Black' : 'White'; }
 
+/** "Played 5× · 3 clean" for a study, from the progress saved for its chapters. */
+function progressLine(e) {
+  const p = data().progress[e.id];
+  if (!p) return '';
+  let done = 0, clean = 0;
+  for (const k of Object.keys(p)) { done += p[k].done || 0; clean += p[k].clean || 0; }
+  return done ? `<span class="stprog">Played ${done}× · ${clean} clean</span>` : '';
+}
+
 async function renderList() {
   const builtin = await loadIndex();
   const group = (title, items, mine) => items.length ? `
@@ -73,6 +82,7 @@ async function renderList() {
         <button type="button" class="stopen" data-open="${esc(e.id)}" data-mine="${mine ? 1 : 0}">
           <span class="stname">${esc(e.name)}</span>
           <span class="stmeta">${e.side ? 'You play ' + sideLabel(e.side) + ' · ' : ''}${esc(e.blurb || e.source || '')}</span>
+          ${progressLine(e)}
         </button>
         ${mine ? `<button type="button" class="ghost stdel" data-del="${esc(e.id)}" title="Remove this study" aria-label="Remove ${esc(e.name)}">×</button>` : ''}
       </div>`).join('')}
@@ -115,7 +125,7 @@ function progressOf(study, chapter) {
 function renderDetail() {
   const s = current;
   $('stDetailTitle').textContent = s.name;
-  $('stDetailBlurb').textContent = s.blurb || '';
+  $('stDetailBlurb').textContent = [s.side ? `You play ${sideLabel(s.side)}.` : '', s.blurb || s.source || ''].filter(Boolean).join(' ');
   $('stChapters').innerHTML = s.chapters.map((c, i) => {
     const p = progressOf(s, c);
     return `<div class="stchapter">
@@ -148,7 +158,10 @@ async function importPgn(text, source, id) {
   if (text.length > MAX_PGN) { setMsg('That study is too large to keep in the browser (over 1.5 MB of moves).', true); return; }
   const parsed = parseStudy(text);
   if (!parsed.chapters.length) { setMsg('No usable chapters were found. ' + (parsed.warnings[0] || 'Is it standard chess PGN?'), true); return; }
-  const entry = { id: id || 'pgn-' + Date.now().toString(36), name: parsed.name || 'Imported study', source, pgn: text };
+  // the same PGN imported again replaces the earlier copy instead of adding a duplicate
+  let h = 5381;
+  for (let i = 0; i < text.length; i += 1) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  const entry = { id: id || 'pgn-' + h.toString(36), name: parsed.name || 'Imported study', source, pgn: text };
   const d = data();
   d.mine = d.mine.filter((m) => m.id !== entry.id);
   d.mine.unshift(entry);
@@ -200,6 +213,7 @@ const kingSquare = (g, color) => {
 };
 
 let T = null;            // the line being trained
+export const studyState = () => (T ? { fen: T.chess.fen(), user: T.user, over: T.over, children: T.node.children.map((c) => ({ san: c.san, uci: c.uci })), mistakes: T.mistakes, hints: T.hints, chapter: T.ch.name } : null);
 let seq = 0;
 const visits = new Map();   // "study|fen|san" -> how often the opponent chose it this session
 
@@ -243,7 +257,8 @@ function newLine(study, chapterIndex, idx, flipUser) {
   show('stTrain');
   $('stTitle').textContent = `${study.name} · ${ch.name}`;
   $('stCoach').hidden = false;
-  coach(`<p class="muted">You play <b>${sideLabel(user)}</b>. Play the study's moves; the opponent answers with its lines.</p>`);
+  coach(`<p class="muted">You play <b>${sideLabel(user)}</b>. Play the study's moves; the opponent answers with its lines.</p>
+    <p class="muted small">This chapter has ${ch.lines} line${ch.lines === 1 ? '' : 's'}. A good move that is not in the study stops you so you can learn the study's choice; Hint shows it.</p>`);
   renderBoard();
   advance();
 }
@@ -324,12 +339,17 @@ function finishLine() {
   play('done');
   setStatus(clean ? 'Clean line' : 'Line finished', clean ? 'good' : '');
   const last = T.node.comment ? `<p>${esc(T.node.comment)}</p>` : '';
+  const key = `${T.study.id}|${T.ch.name}`;
+  const seen = seenLines.get(key) || new Set();
+  seen.add(T.chess.history().join(' ')); seenLines.set(key, seen);
   coach(`${last}<h3>${clean ? 'Perfect — no mistakes' : 'Line complete'}</h3>
-    <p class="muted small">${T.mistakes} wrong attempt${T.mistakes === 1 ? '' : 's'}, ${T.hints} hint${T.hints === 1 ? '' : 's'}.</p>
+    <p class="muted small">${T.mistakes} wrong attempt${T.mistakes === 1 ? '' : 's'}, ${T.hints} hint${T.hints === 1 ? '' : 's'}. Lines covered in this chapter so far: ${Math.min(seen.size, T.ch.lines)} of ${T.ch.lines}.</p>
     <div class="row"><button type="button" class="primary" id="stNext">Next line</button><button type="button" class="ghost" id="stChapters2">Chapters</button></div>`);
+  const study = T.study;
   $('stNext').onclick = () => nextLine();
-  $('stChapters2').onclick = () => { leaveTraining(); openStudy(current || T.study); };
+  $('stChapters2').onclick = () => { leaveTraining(); openStudy(study); };
 }
+const seenLines = new Map();   // "study|chapter" -> the distinct lines played this visit
 
 function nextLine() {
   const { study, chapterIndex, idx, user, ch } = T;

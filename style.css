@@ -679,7 +679,15 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 .stname { font-weight: 650; }
 .stmeta { font-size: 13px; color: var(--muted, #9a9892); }
 .stdel { flex: 0 0 40px; border: 0; border-left: 1px solid var(--line); border-radius: 0 10px 10px 0; font-size: 20px; }
-#stImport { margin-top: 20px; }
+.stlist { display: grid; gap: 22px; }
+.stmain, #stImport { min-width: 0; }
+.sthead { margin-bottom: 4px; }
+.sthead h2, #stImport h2 { margin: 0 0 4px; font-size: 20px; }
+.stprog { display: block; margin-top: 2px; font-size: 12px; color: #7fb64a; }
+.stdhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 6px; }
+.stdhead h2 { margin: 0 0 4px; font-size: 20px; }
+.stchapter b { font-size: 15px; }
+.stchapter button { flex: none; }
 #stImport .row { display: flex; gap: 8px; }
 #stUrl { flex: 1 1 auto; min-width: 0; }
 .stpgn { margin-top: 10px; }
@@ -692,14 +700,15 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 .sttitle { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stchapter { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
 .stchapter:first-child { border-top: 0; }
-#stTrain:not([hidden]) { display: grid; gap: 14px; }
-#stTrain .stbar { grid-column: 1 / -1; margin-bottom: 0; }
 #stBoard { width: 100%; }
+#stTrain .drside .stbar { margin-bottom: 8px; flex-wrap: wrap; }
+#stTrain .sttitle { flex: 1 1 100%; order: 3; white-space: normal; font-size: 16px; line-height: 1.3; }
 .stcoach { min-height: 120px; }
 .stcoach p { margin: 0 0 8px; }
 .stcoach h3 { margin: 6px 0; font-size: 16px; text-transform: none; letter-spacing: 0; color: inherit; }
 @media (min-width: 980px) {
-  #stTrain:not([hidden]) { grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); align-items: start; }
+  .stlist { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+  #stImport { position: sticky; top: 14px; }
 }
 
 /* mate drills */
@@ -752,7 +761,6 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 @media (min-width: 980px) {
   /* the board is as tall as the window allows, centred, with the side panel next to it */
   .drlayout { grid-template-columns: minmax(0, min(calc(100vh - 210px), 720px)) minmax(280px, 360px); justify-content: center; align-items: start; gap: 28px; }
-  #stTrain:not([hidden]) { grid-template-columns: minmax(0, min(calc(100vh - 210px), 640px)) minmax(280px, 360px); justify-content: center; gap: 28px; }
 }
 
 /* which games to learn from: toggle buttons for time controls and rating groups */
