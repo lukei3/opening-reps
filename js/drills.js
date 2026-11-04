@@ -26,7 +26,7 @@ const data = () => {
 };
 const prefs = () => {
   const p = store.S().prefs;
-  p.drill = { mode: 'mate', kind: 'kq', time: 60, cat: 'all', ctime: 'real', ...(p.drill || {}) };
+  p.drill = { mode: 'mate', kind: 'kq', time: 60, cat: 'all', ctime: 'real', countIn: true, ...(p.drill || {}) };
   return p.drill;
 };
 
@@ -112,6 +112,7 @@ function renderSetup() {
   $('drIntro').textContent = convert
     ? 'Real positions from Lichess games, with the clock you really had. The side that was winning is yours: convert it to checkmate before your time runs out. The engine defends.'
     : 'Deliver checkmate before your clock runs out. You play the stronger side from a random position, and the engine defends as well as it can.';
+  $('drCountToggle').checked = p.countIn !== false;
   const d = data();
   if (convert) {
     $('drCats').innerHTML = CATS.map(([k, l]) => chip('cat', k, l, p.cat === k)).join('');
@@ -130,6 +131,7 @@ function renderSetup() {
   }
 }
 
+$('drCountToggle').addEventListener('change', () => { prefs().countIn = $('drCountToggle').checked; store.save(); });
 $('drModes').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) { prefs().mode = b.dataset.mode; store.save(); renderSetup(); } });
 $('drKinds').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) { prefs().kind = b.dataset.kind; store.save(); renderSetup(); } });
 $('drTimes').addEventListener('click', (e) => { const b = e.target.closest('[data-time]'); if (b) { prefs().time = +b.dataset.time; store.save(); renderSetup(); } });
@@ -203,7 +205,7 @@ function begin(spec) {
   const run = R;
   if (run.chess.turn() === run.user) prefetchReplies();   // the engine warms up during the count-in
   // a short orientation first, so you know which side you are and which way you are going before the clock starts
-  countIn(run, streak ? 2 : 3).then(() => {
+  countIn(run, 5).then(() => {
     if (!R || R.id !== run.id) return;
     board.setEnabled(true, R.user);
     board.canMove = true;
@@ -215,16 +217,25 @@ function begin(spec) {
 
 /** Cover the board for a moment: your colour, the direction your pieces move, who starts, then 3-2-1 (tap or Enter to skip). */
 function countIn(run, steps) {
+  if (prefs().countIn === false) return Promise.resolve();   // switched off: straight into the position
   return new Promise((resolve) => {
     const el = $('drCount');
     const side = run.user === 'w' ? 'White' : 'Black';
-    el.innerHTML = `<div class="drc-card">
-      <div class="drc-side ${run.user === 'w' ? 'white' : 'black'}">You play <b>${side}</b></div>
-      <div class="drc-dir"><span class="drc-arrow">↑</span> Your pieces start at the bottom and move <b>up</b> the board</div>
-      <div class="drc-num" id="drNum">${steps}</div>
-      <div class="drc-sub">${run.chess.turn() === run.user ? 'You move first' : 'The engine moves first'} · tap to start now</div>
-    </div>`;
+    const up = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 13h5.5v8h7v-8H21z"/></svg>';
+    el.innerHTML = `
+      <div class="drc-edge left">${up}${up}${up}</div>
+      <div class="drc-edge right">${up}${up}${up}</div>
+      <div class="drc-card">
+        <div class="drc-side ${run.user === 'w' ? 'white' : 'black'}">YOU ARE <b>${side.toUpperCase()}</b></div>
+        <div class="drc-bigarrow">${up}</div>
+        <div class="drc-dir">Your pieces move <b>UP</b> the board</div>
+        <div class="drc-dir2">${run.user === 'b' ? 'The board is turned around for you, so you are at the bottom.' : 'You are at the bottom; the engine is at the top.'}</div>
+        <div class="drc-num" id="drNum">${steps}</div>
+        <div class="drc-sub">${run.chess.turn() === run.user ? 'You move first' : 'The engine moves first'} · tap to start now</div>
+        <button type="button" class="drc-off">Turn off the count-in</button>
+      </div>`;
     el.hidden = false;
+    el.querySelector('.drc-off').onclick = (e) => { e.stopPropagation(); prefs().countIn = false; store.save(); finish(); };
     let n = steps;
     const finish = () => { clearInterval(iv); window.removeEventListener('keydown', onKey); el.hidden = true; el.onclick = null; resolve(); };
     const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish(); } };
@@ -232,7 +243,7 @@ function countIn(run, steps) {
       n -= 1;
       if (n <= 0 || !R || R.id !== run.id) finish();
       else $('drNum').textContent = n;
-    }, 800);
+    }, 1000);
     el.onclick = finish;
     window.addEventListener('keydown', onKey);
   });
