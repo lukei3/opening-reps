@@ -3,7 +3,7 @@
 [ChapterName "English Attack: 6.Be3"]
 [Orientation "black"]
 
-1. e4 c5 {The Sicilian Defence: Black fights for the centre from the side and plays for a win.} 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 {The Najdorf. The little pawn move controls b5 and prepares ...e5 or ...b5.} 6. Be3 e5 {Hitting the knight and taking the centre.} 7. Nb3 Be6 8. f3 Be7 9. Qd2 O-O 10. O-O-O Nbd7 11. g4 b5 {Both sides race: White attacks on the kingside, Black on the queenside.} 12. g5 b4 13. Ne2 Ne8 14. f4 a5 15. f5 Bxb3 16. axb3 {A sharp, much-studied position.}
+1. e4 c5 {The Sicilian Defence: Black fights for the centre from the side and plays for a win.} 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 {The Najdorf. The little pawn move controls b5 and prepares ...e5 or ...b5. [%csl Gb5] [%cal Ga6b5]} 6. Be3 e5 {Hitting the knight and taking the centre.} 7. Nb3 Be6 8. f3 Be7 9. Qd2 O-O 10. O-O-O Nbd7 11. g4 b5 {Both sides race: White attacks on the kingside, Black on the queenside.} 12. g5 b4 13. Ne2 Ne8 14. f4 a5 15. f5 Bxb3 16. axb3 {A sharp, much-studied position.}
 
 [Event "Sicilian Najdorf"]
 [StudyName "Sicilian Najdorf"]

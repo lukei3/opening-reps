@@ -6,6 +6,7 @@ import { Board } from './board.js';
 import * as store from './store.js';
 import { parseStudy } from './pgn.js';
 import { play, moveSound } from './sounds.js';
+import { getPosition, scoreFor } from './data.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -271,10 +272,24 @@ function leaveTraining() {
 
 function setStatus(text, cls = '') { const el = $('stStatus'); el.textContent = text; el.className = 'status ' + cls; }
 
+const pref = (key, fallback) => { const v = store.S().prefs[key]; return v === undefined ? fallback : v; };
+
+// the author's drawings, in the colours Lichess uses
+const SHAPE_HEX = { green: '#15781b', red: '#c0392b', blue: '#1f6fd1', yellow: '#e6a100' };
+function showShapes() {
+  const s = T && T.shapes;       // the drawings from the latest move that had any; they stay up until your next move
+  if (!s || pref('studyShapes', true) === false) { board.setShapes(null); return; }
+  board.setShapes({
+    arrows: s.arrows.map((a) => ({ from: a.from, to: a.to, color: SHAPE_HEX[a.color], opacity: 0.8, width: 0.15 })),
+    circles: s.circles.map((c) => ({ sq: c.sq, color: SHAPE_HEX[c.color] })),
+  });
+}
+
 function renderBoard() {
   const g = T.chess;
   board.set({ pieces: pieceMap(g), orientation: T.user, lastMove: lastMoveOf(g), check: g.inCheck() ? kingSquare(g, g.turn()) : null });
   board.setArrows([]);
+  showShapes();
   const sans = g.history();
   $('stMoves').innerHTML = sans.map((s, i) => `${i % 2 === 0 ? `${Math.floor(i / 2) + 1}. ` : ''}<b>${esc(s)}</b>`).join(' ');
 }
@@ -294,7 +309,10 @@ function newLine(study, chapterIndex, idx, flipUser) {
   T = {
     id: ++seq, study, chapterIndex, idx, ch, user, node: ch.root, chess: new Chess(ch.root.fen),
     mistakes: 0, hints: 0, over: false,
+    prob: 1, known: true,      // the chance of meeting the opponent's replies in real games, and whether every one had data
+    shapes: ch.root.shapes || null,
   };
+  $('stReal').hidden = true; $('stReal').innerHTML = '';
   show('stTrain');
   $('stTitle').textContent = `${study.name} · ${ch.name}`;
   $('stCoach').hidden = false;
@@ -317,7 +335,18 @@ async function advance() {
     // the opponent's reply: mostly the main line, but other branches of the study come up too, favouring ones seen less
     board.setEnabled(false);
     setStatus('');
-    const weights = node.children.map((c, i) => (i === 0 ? 3 : 2) / (1 + (visits.get(`${T.study.id}|${node.fen}|${c.san}`) || 0)));
+    // which branch of the study to play: the replies real players choose most often come up most, and branches already seen
+    // this session come up less. Without real-game data it is mostly the main line.
+    let real = null;
+    if (pref('studyReal', true) !== false) {
+      try { const d = await getPosition(node.fen); if (d && d.movesTotal >= 30) real = d; } catch (e) { real = null; }
+      if (!T || T.id !== id) return;
+    }
+    const weights = node.children.map((c, i) => {
+      const seen = 1 + (visits.get(`${T.study.id}|${node.fen}|${c.san}`) || 0);
+      if (real) { const row = real.moves.find((m) => m.san === c.san); return (0.03 + (row ? row.games / real.movesTotal : 0)) / seen; }
+      return (i === 0 ? 3 : 2) / seen;
+    });
     let r = Math.random() * weights.reduce((a, b) => a + b, 0), pick = node.children[0];
     for (let i = 0; i < weights.length; i += 1) { r -= weights[i]; if (r <= 0) { pick = node.children[i]; break; } }
     visits.set(`${T.study.id}|${node.fen}|${pick.san}`, (visits.get(`${T.study.id}|${node.fen}|${pick.san}`) || 0) + 1);
@@ -328,11 +357,52 @@ async function advance() {
 }
 
 function applyMove(child) {
+  const parent = T.node, mover = T.chess.turn();
   const mv = T.chess.move(child.san);
   T.node = child;
+  // the opponent answers at once, so the author's drawings for a move would vanish before you could read them:
+  // keep them up through the reply, and clear them when you make your next move
+  if (child.shapes) T.shapes = child.shapes;
+  else if (mover === T.user) T.shapes = null;
   renderBoard();
   play(moveSound(mv, T.chess));
   if (child.comment) coach(`<p>${esc(child.comment)}</p>`);
+  realCheck(parent, child, mover, T.id);
+}
+
+// ---------- the real-game reality check: what players actually do in the position the move was played from ----------
+
+const compact = (n) => (n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'k' : String(n));
+const pctText = (x) => (x >= 0.995 ? '100%' : x >= 0.1 ? `${Math.round(x * 100)}%` : x > 0 ? `${(x * 100).toFixed(1)}%` : '0%');
+
+async function realCheck(parent, child, mover, id) {
+  const box = $('stReal');
+  if (pref('studyReal', true) === false) { box.hidden = true; return; }
+  let d = null;
+  try { d = await getPosition(parent.fen); } catch (e) { d = null; }
+  if (!T || T.id !== id) return;
+  const mine = mover === T.user;
+  const filters = `${store.speedLabel()}, rated ${store.ratingLabel()}`;
+  if (!d || d.movesTotal < 30) {
+    if (!mine) T.known = false;
+    box.innerHTML = '<h4>Real games</h4><p class="muted small">Not enough real games from this position to say what players choose.</p>';
+    box.hidden = false;
+    return;
+  }
+  const row = d.moves.find((m) => m.san === child.san);
+  const total = d.movesTotal, share = row ? row.games / total : 0;
+  if (!mine) T.prob *= share;
+  const others = d.moves.filter((m) => m.san !== child.san).slice(0, 3).map((m) => `<b>${esc(m.san)}</b> ${pctText(m.games / total)}`).join(' · ');
+  const score = row ? Math.round(scoreFor(row, mover) * 100) : null;
+  let note = '';
+  if (!row) note = mine ? 'No real game from here has this move.' : 'No real game from here has this reply, so you would almost never meet it.';
+  else if (share < 0.03) note = mine ? 'A rare choice: opponents will be unfamiliar with it, but it has had little real-game testing.' : `A rare reply (about 1 in ${Math.round(1 / share)} games), so you will not meet this often.`;
+  else if (share >= 0.4) note = mine ? 'The most popular choice here.' : 'The most common reply: expect to see this one a lot.';
+  box.innerHTML = `<h4>Real games <span class="muted small">${esc(filters)}</span></h4>
+    <p>${mine ? 'You played' : 'Your opponent plays'} <b>${esc(child.san)}</b>: ${row ? `${pctText(share)} of ${compact(total)} games` : 'not found in real games'}${score != null ? `, scoring ${score}% for ${mover === 'w' ? 'White' : 'Black'}` : ''}.</p>
+    ${note ? `<p class="small">${note}</p>` : ''}
+    ${others ? `<p class="muted small">Other moves: ${others}</p>` : ''}`;
+  box.hidden = false;
 }
 
 async function onUserMove(from, to) {
@@ -383,8 +453,15 @@ function finishLine() {
   const key = `${T.study.id}|${T.ch.name}`;
   const seen = seenLines.get(key) || new Set();
   seen.add(T.chess.history().join(' ')); seenLines.set(key, seen);
+  // how likely a real opponent is to follow this line: the product of how often players choose each of the opponent's moves
+  let odds = '';
+  if (pref('studyReal', true) !== false && T.known) {
+    const opponentMoves = T.chess.history().length > 0;
+    if (opponentMoves && T.prob < 1) odds = T.prob > 0 ? `<p class="small">In real games, an opponent follows this exact line about <b>1 time in ${Math.max(1, Math.round(1 / T.prob)).toLocaleString()}</b>.</p>` : '<p class="small">No real game follows this exact line.</p>';
+  }
   coach(`${last}<h3>${clean ? 'Perfect — no mistakes' : 'Line complete'}</h3>
     <p class="muted small">${T.mistakes} wrong attempt${T.mistakes === 1 ? '' : 's'}, ${T.hints} hint${T.hints === 1 ? '' : 's'}. Lines covered in this chapter so far: ${Math.min(seen.size, T.ch.lines)} of ${T.ch.lines}.</p>
+    ${odds}
     <div class="row"><button type="button" class="primary" id="stNext">Next line</button><button type="button" class="ghost" id="stChapters2">Chapters</button></div>`);
   const study = T.study;
   $('stNext').onclick = () => nextLine();
@@ -398,6 +475,12 @@ function nextLine() {
   const nextIdx = chapterIndex >= 0 ? idx : Math.floor(Math.random() * study.chapters.length);
   newLine(study, chapterIndex, nextIdx, flipped && nextIdx === idx ? flipped : null);
 }
+
+// options
+$('stShapesToggle').checked = pref('studyShapes', true) !== false;
+$('stShapesToggle').addEventListener('change', () => { store.S().prefs.studyShapes = $('stShapesToggle').checked; store.save(); if (T) showShapes(); });
+$('stRealToggle').checked = pref('studyReal', true) !== false;
+$('stRealToggle').addEventListener('change', () => { store.S().prefs.studyReal = $('stRealToggle').checked; store.save(); if (!$('stRealToggle').checked) $('stReal').hidden = true; });
 
 // controls
 $('stBack').addEventListener('click', () => { const s = T && T.study; leaveTraining(); if (s) { current = s; renderDetail(); show('stDetail'); } else show('stList'); });

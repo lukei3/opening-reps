@@ -24,7 +24,32 @@ function splitGames(text) {
 
 const RESULT = /^(1-0|0-1|1\/2-1\/2|\*)$/;
 
-/** Walk the move text and build a tree of {san, uci, fen, comment, children}. */
+const SHAPE_COLOURS = { G: 'green', R: 'red', B: 'blue', Y: 'yellow' };
+
+/**
+ * Lichess studies draw arrows and highlight squares with [%cal Gd2d4,Re7e5] (arrows) and [%csl Gd4,Rd5] (squares) in the
+ * comment of a move; the first letter is the colour. They are kept on the move's node as node.shapes.
+ */
+function addShapes(node, raw) {
+  const add = (kind, item) => {
+    if (!node.shapes) node.shapes = { arrows: [], circles: [] };
+    node.shapes[kind].push(item);
+  };
+  for (const m of raw.matchAll(/\[%cal\s+([^\]]+)\]/g)) {
+    for (const t of m[1].split(/[\s,]+/)) {
+      const a = /^([GRBY])([a-h][1-8])([a-h][1-8])$/.exec(t);
+      if (a && a[2] !== a[3]) add('arrows', { from: a[2], to: a[3], color: SHAPE_COLOURS[a[1]] });
+    }
+  }
+  for (const m of raw.matchAll(/\[%csl\s+([^\]]+)\]/g)) {
+    for (const t of m[1].split(/[\s,]+/)) {
+      const a = /^([GRBY])([a-h][1-8])$/.exec(t);
+      if (a) add('circles', { sq: a[2], color: SHAPE_COLOURS[a[1]] });
+    }
+  }
+}
+
+/** Walk the move text and build a tree of {san, uci, fen, comment, shapes, children}. */
 function buildTree(body, startFen, warn) {
   const root = { san: null, uci: null, fen: startFen, comment: '', children: [] };
   let cur = root;           // the position moves are added to
@@ -36,7 +61,9 @@ function buildTree(body, startFen, warn) {
     const c = body[i];
     if (c === '{') {                                  // comment, attached to the last move
       const end = body.indexOf('}', i);
-      const text = body.slice(i + 1, end < 0 ? n : end).replace(/\[%[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+      const raw = body.slice(i + 1, end < 0 ? n : end);
+      addShapes(cur, raw);                            // the author's arrows and highlighted squares, if any
+      const text = raw.replace(/\[%[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
       if (text) cur.comment = cur.comment ? `${cur.comment} ${text}` : text;
       i = end < 0 ? n : end + 1;
     } else if (c === ';') {

@@ -3,7 +3,7 @@
 [ChapterName "Benko Gambit Accepted: 5.bxa6"]
 [Orientation "black"]
 
-1. d4 Nf6 2. c4 c5 3. d5 {White grabs space and shuts the long diagonal.} b5 {The Benko Gambit: a pawn sacrifice for long-term pressure on the queenside.} 4. cxb5 a6 5. bxa6 Bxa6 {Black gets open a- and b-files and a bishop pointing at White's king.} 6. Nc3 d6 7. e4 Bxf1 8. Kxf1 g6 9. g3 Bg7 10. Kg2 O-O 11. Nf3 Nbd7 12. Re1 Qa5 {Black's pieces are active; White's king is a little awkward.}
+1. d4 Nf6 2. c4 c5 3. d5 {White grabs space and shuts the long diagonal.} b5 {The Benko Gambit: a pawn sacrifice for long-term pressure on the queenside. [%cal Gb5c4] [%csl Ga1,Gb1]} 4. cxb5 a6 5. bxa6 Bxa6 {Black gets open a- and b-files and a bishop pointing at White's king.} 6. Nc3 d6 7. e4 Bxf1 8. Kxf1 g6 9. g3 Bg7 10. Kg2 O-O 11. Nf3 Nbd7 12. Re1 Qa5 {Black's pieces are active; White's king is a little awkward.}
 
 [Event "Benko Gambit"]
 [StudyName "Benko Gambit"]

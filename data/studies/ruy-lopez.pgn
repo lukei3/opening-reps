@@ -3,7 +3,7 @@
 [ChapterName "Closed Ruy Lopez: main line"]
 [Orientation "white"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bb5 {The Ruy Lopez. The bishop pressures the knight that guards e5.} a6 4. Ba4 Nf6 5. O-O {Castle first: if Black takes e4, you win the pawn back with Re1.} Be7 6. Re1 b5 7. Bb3 d6 8. c3 {Makes room for the bishop on c2 and prepares d4.} O-O 9. h3 {A useful waiting move that stops ...Bg4.} Nb8 {The Breyer Variation: the knight reroutes via d7.} (9... Na5 10. Bc2 c5 11. d4 Qc7 12. Nbd2 cxd4 13. cxd4 Nc6 14. Nb3 a5) 10. d4 Nbd7 11. Nbd2 Bb7 12. Bc2 Re8 13. Nf1 Bf8 14. Ng3 g6 {A classic manoeuvring battle.}
+1. e4 e5 2. Nf3 Nc6 3. Bb5 {The Ruy Lopez. The bishop pressures the knight that guards e5. [%cal Gb5c6,Rc6e5] [%csl Ye5]} a6 4. Ba4 Nf6 5. O-O {Castle first: if Black takes e4, you win the pawn back with Re1.} Be7 6. Re1 b5 7. Bb3 d6 8. c3 {Makes room for the bishop on c2 and prepares d4.} O-O 9. h3 {A useful waiting move that stops ...Bg4.} Nb8 {The Breyer Variation: the knight reroutes via d7.} (9... Na5 10. Bc2 c5 11. d4 Qc7 12. Nbd2 cxd4 13. cxd4 Nc6 14. Nb3 a5) 10. d4 Nbd7 11. Nbd2 Bb7 12. Bc2 Re8 13. Nf1 Bf8 14. Ng3 g6 {A classic manoeuvring battle.}
 
 [Event "Ruy Lopez"]
 [StudyName "Ruy Lopez"]

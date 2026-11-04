@@ -3,7 +3,7 @@
 [ChapterName "Giuoco Pianissimo: the quiet main line"]
 [Orientation "white"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bc4 {The Italian Game. The bishop aims at f7, Black's weakest square, and you develop quickly.} Bc5 {The Giuoco Piano, "the quiet game".} 4. c3 {Prepares d4 to build a big centre.} Nf6 5. d3 {The modern, patient plan: keep the centre solid, castle, then bring the knight round with Nbd2-f1-g3.} d6 (5... a6 6. O-O d6 7. Bb3 Ba7 8. Re1 O-O 9. h3 h6 10. Nbd2 Re8 11. Nf1 Be6) 6. O-O O-O 7. Re1 a6 8. Bb3 Ba7 {Black keeps the bishop safe from d4 ideas.} 9. h3 {Stops ...Bg4 pinning your knight.} h6 10. Nbd2 Re8 11. Nf1 {The knight heads for g3 and f5.} Be6 12. Bxe6 Rxe6 13. Ng3 {A calm position with long-term chances on both wings.}
+1. e4 e5 2. Nf3 Nc6 3. Bc4 {The Italian Game. The bishop aims at f7, Black's weakest square, and you develop quickly. [%cal Gc4f7] [%csl Rf7]} Bc5 {The Giuoco Piano, "the quiet game".} 4. c3 {Prepares d4 to build a big centre.} Nf6 5. d3 {The modern, patient plan: keep the centre solid, castle, then bring the knight round with Nbd2-f1-g3.} d6 (5... a6 6. O-O d6 7. Bb3 Ba7 8. Re1 O-O 9. h3 h6 10. Nbd2 Re8 11. Nf1 Be6) 6. O-O O-O 7. Re1 a6 8. Bb3 Ba7 {Black keeps the bishop safe from d4 ideas.} 9. h3 {Stops ...Bg4 pinning your knight.} h6 10. Nbd2 Re8 11. Nf1 {The knight heads for g3 and f5.} Be6 12. Bxe6 Rxe6 13. Ng3 {A calm position with long-term chances on both wings.}
 
 [Event "Italian Game"]
 [StudyName "Italian Game"]

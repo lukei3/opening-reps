@@ -146,6 +146,13 @@ export class Board {
   }
   setArrows(arrows) { this.arrows = arrows || []; this.render(); }
 
+  /** Arrows and highlighted squares that belong to the position being shown (a study's own drawings). null clears them. */
+  setShapes(shapes) {
+    this.shapeArrows = (shapes && shapes.arrows) || [];
+    this.shapeCircles = (shapes && shapes.circles) || [];
+    this.render();
+  }
+
   // ---- premoves (chess.com style): queue moves while the opponent is to move; right-click, Escape or a tap on a queued square cancels them ----
 
   /** The pieces as they will stand once every queued premove has been played. */
@@ -428,8 +435,8 @@ export class Board {
 
   arrowsSvg() {
     const premoveArrows = this.premoves.map((p) => ({ from: p.from, to: p.to, color: '#d63e32', opacity: 0.55, width: 0.14 }));
-    const all = [...this.arrows, ...this.marks.arrows, ...premoveArrows];
-    const circles = this.marks.circles.map((c) => {
+    const all = [...(this.shapeArrows || []), ...this.arrows, ...this.marks.arrows, ...premoveArrows];
+    const circles = [...(this.shapeCircles || []), ...this.marks.circles].map((c) => {
       const [x, y] = this.xy(c.sq);
       return `<circle cx="${x}" cy="${y}" r="0.44" fill="none" stroke="${c.color}" stroke-width="0.11" opacity="0.7"/>`;
     });

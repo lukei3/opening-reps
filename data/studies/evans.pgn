@@ -3,7 +3,7 @@
 [ChapterName "Evans Gambit Accepted"]
 [Orientation "white"]
 
-1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. b4 {The Evans Gambit: give a pawn to win time and build a huge centre. It was a favourite of 19th-century attackers and still scores well today.} Bxb4 5. c3 {Hits the bishop and threatens d4.} Ba5 {The most common retreat.} 6. d4 exd4 7. O-O {Sacrifice a second pawn for a lead in development.} d6 8. cxd4 Bb6 9. Nc3 Na5 10. Bg5 f6 11. Bf4 {White has a big centre and open lines against the king.}
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. b4 {The Evans Gambit: give a pawn to win time and build a huge centre. It was a favourite of 19th-century attackers and still scores well today. [%cal Gb2b4,Gc2c3,Gd2d4]} Bxb4 5. c3 {Hits the bishop and threatens d4.} Ba5 {The most common retreat.} 6. d4 exd4 7. O-O {Sacrifice a second pawn for a lead in development.} d6 8. cxd4 Bb6 9. Nc3 Na5 10. Bg5 f6 11. Bf4 {White has a big centre and open lines against the king.}
 
 [Event "Evans Gambit"]
 [StudyName "Evans Gambit"]
