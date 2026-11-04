@@ -39,14 +39,16 @@ jobs:
             case "$run" in (*[!0-9]*|'') echo "bad run number: $run"; exit 1;; esac
             gh run download "$run" --repo "$GITHUB_REPOSITORY" --pattern 'part-*' --dir "parts/$run"
           done
-          ls parts/*/ | head -n 200
-          echo "parts: $(ls -d parts/*/part-* | wc -l)"
       - name: Merge
         env:
           MINPOS: ${{ inputs.final_min_position }}
           MINMOVE: ${{ inputs.final_min_move }}
         run: |
-          python tools/merge_books.py book parts/*/part-* --min-position "${MINPOS}" --min-move "${MINMOVE}"
+          # every folder that holds a meta.json is one part (older builds had one folder per month and time control,
+          # newer ones have a folder per time control inside each month's folder)
+          dirs=$(find parts -name meta.json -printf '%h\n' | sort)
+          echo "parts: $(echo "$dirs" | wc -l)"
+          python tools/merge_books.py book $dirs --min-position "${MINPOS}" --min-move "${MINMOVE}"
           cat book/meta.json
           du -sh book
       - uses: actions/upload-artifact@v4

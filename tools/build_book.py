@@ -1,14 +1,15 @@
-"""Build the opening book from the Lichess open database (https://database.lichess.org, CC0).
+"""Build opening-book parts from the Lichess open database (https://database.lichess.org, CC0).
 
-Streams the START of one or more monthly .pgn.zst dumps (never saves them), keeps rated blitz/rapid/classical games
-whose average rating is 1400-2199, and counts results per move, per rating bucket, merged by position.
+Streams one or more monthly .pgn.zst dumps (never saves them), keeps rated bullet/blitz/rapid/classical games of any
+rating, and counts results per move, per rating group and per time control, merged by position. A month is downloaded
+and read ONCE for all the time controls you ask for.
 
-    python tools/build_book.py --url <.pgn.zst url> [--url <another>] --games-per-url 2500000
+    python tools/build_book.py --url <.pgn.zst url> --speeds bullet,blitz,rapid --caps 6000000,8000000,6000000
 
-Memory-safe: games are processed in chunks, each chunk is folded into compact per-position counts and then freed, so
-a big build fits in a few hundred MB.
+Memory-safe: games are processed in chunks, each chunk is folded into compact per-position counts and then freed.
 
-Writes book/meta.json and book/sNN.json (sharded by position so the app loads only what it needs).
+Writes <out>/<speed>/meta.json and <out>/<speed>/sNN.json for each time control. tools/merge_books.py combines them
+(and parts from other months) into the book the app loads.
 Needs:  pip install zstandard chess
 """
 import argparse
@@ -31,7 +32,6 @@ NB = len(BUCKETS)
 W = NB * 3                           # counters per move: [w, d, b] for each rating group
 SHARDS = 64
 SPEED_NAMES = ('bullet', 'blitz', 'rapid', 'classical')   # UltraBullet counts as bullet; correspondence is left out
-WANT_SPEED = None                    # set by --speed: one pass per time control keeps memory small
 RESULT_IDX = {'1-0': 0, '1/2-1/2': 1, '0-1': 2}
 COMMENT = re.compile(r'\{[^}]*\}')
 MIN_PARENT = 3        # inside a chunk, a child node is made only once its parent has been seen this often
@@ -55,12 +55,14 @@ def speed_of(event):
     return None
 
 
-def games(stream, max_games, max_ply, log, max_qualifying=0):
-    """Yield (bucket, result_idx, [san...]) for games that pass the filters.
+def games(stream, max_games, max_ply, log, caps):
+    """Yield (speed, bucket, result_idx, [san...]) for games that pass the filters.
 
-    Stops after max_games games are READ, or after max_qualifying games have been YIELDED (0 = no limit)."""
+    `caps` maps each wanted time control to how many games to keep (0 = no limit). Reading stops after max_games games
+    are READ, or once every wanted time control has reached its cap."""
     event = we = be = res = None
-    seen = kept = 0
+    seen = 0
+    kept = {s: 0 for s in caps}
     t0 = time.time()
     for raw in stream:
         line = raw.strip()
@@ -80,16 +82,15 @@ def games(stream, max_games, max_ply, log, max_qualifying=0):
             continue
         seen += 1
         if seen % 250000 == 0:
-            log(f'  read {seen:,} games ({seen / (time.time() - t0):,.0f}/s)')
+            log(f'  read {seen:,} games ({seen / (time.time() - t0):,.0f}/s); kept ' + ', '.join(f'{s} {n:,}' for s, n in kept.items()))
         sp = speed_of(event) if event else None
-        ok = sp and (WANT_SPEED is None or sp == WANT_SPEED) and we and be and we.isdigit() and be.isdigit() and res in RESULT_IDX
-        if ok:
+        if sp in caps and (not caps[sp] or kept[sp] < caps[sp]) and we and be and we.isdigit() and be.isdigit() and res in RESULT_IDX:
             avg = (int(we) + int(be)) // 2
             toks = COMMENT.sub('', line).split()
             sans = [t.rstrip('!?') for t in toks if t[0].isalpha() and t not in ('O',)][:max_ply]
-            kept += 1
-            yield bisect.bisect_right(EDGES, avg), RESULT_IDX[res], sans
-            if max_qualifying and kept >= max_qualifying:
+            kept[sp] += 1
+            yield sp, bisect.bisect_right(EDGES, avg), RESULT_IDX[res], sans
+            if all(c and kept[s] >= c for s, c in caps.items()):
                 return
         event = we = be = res = None
         if seen >= max_games:
@@ -178,52 +179,7 @@ def stream_url(url):
     return resp, io.TextIOWrapper(reader, encoding='utf-8', errors='replace')
 
 
-def main():
-    global SHARDS, MIN_POSITION, MIN_MOVE, MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE, WANT_SPEED
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--speed', choices=SPEED_NAMES, help='keep only this time control (default: all four; the merge step combines passes)')
-    ap.add_argument('--max-qualifying', type=int, default=0, help='stop after this many games of that time control (0 = no limit)')
-    ap.add_argument('--chunk-min-position', type=int, default=CHUNK_MIN_POSITION, help='inside a chunk, expand a line only once seen this often (lower = deeper, more memory)')
-    ap.add_argument('--chunk-min-move', type=int, default=CHUNK_MIN_MOVE, help='inside a chunk, keep a move only once seen this often')
-    ap.add_argument('--min-parent', type=int, default=MIN_PARENT, help='inside a chunk, create a child only once its parent was seen this often')
-    ap.add_argument('--url', action='append', required=True, help='a monthly .pgn.zst URL (repeat for several months)')
-    ap.add_argument('--games-per-url', type=int, default=2_000_000, help='games to READ from the start of each file')
-    ap.add_argument('--chunk', type=int, default=400_000, help='qualifying games per in-memory chunk')
-    ap.add_argument('--max-ply', type=int, default=30)
-    ap.add_argument('--shards', type=int, default=SHARDS, help='more shards = smaller files, each fetched on demand')
-    ap.add_argument('--min-position', type=int, default=MIN_POSITION, help='drop positions seen fewer times than this')
-    ap.add_argument('--min-move', type=int, default=MIN_MOVE, help='drop moves seen fewer times than this')
-    ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'book'))
-    a = ap.parse_args()
-    SHARDS, MIN_POSITION, MIN_MOVE = a.shards, a.min_position, a.min_move
-    MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE = a.min_parent, a.chunk_min_position, a.chunk_min_move
-    WANT_SPEED = a.speed
-    log = lambda m: print(m, flush=True)
-
-    merged = {}
-    used = 0
-    for url in a.url:
-        log(f'Streaming {url}')
-        resp, text = stream_url(url)
-        gen = games(text, a.games_per_url, a.max_ply, log, a.max_qualifying)
-        done = False
-        while not done:
-            trie = Trie()
-            n = 0
-            for b, r, sans in gen:
-                trie.add(b, r, sans)
-                n += 1
-                if n >= a.chunk:
-                    break
-            else:
-                done = True
-            if n:
-                fold(trie, merged)
-                used += n
-                log(f'  folded a chunk of {n:,} games; {used:,} total, {len(merged):,} positions so far')
-            del trie
-        resp.close()
-
+def write_part(merged, folder, speed, used, urls, max_ply, log):
     shards = [{} for _ in range(SHARDS)]
     kept = 0
     for key, moves in merged.items():
@@ -233,18 +189,79 @@ def main():
         rows = [[san] + list(v) for san, v in sorted(moves.items(), key=lambda kv: -sum(kv[1]))]
         shards[shard_of(key)][key] = rows
         kept += 1
-    os.makedirs(a.out, exist_ok=True)
+    os.makedirs(folder, exist_ok=True)
     for i, s in enumerate(shards):
-        with open(os.path.join(a.out, f's{i:02d}.json'), 'w', encoding='utf-8') as f:
+        with open(os.path.join(folder, f's{i:02d}.json'), 'w', encoding='utf-8') as f:
             json.dump(s, f, separators=(',', ':'))
     meta = {
-        'source': ', '.join(u.rsplit('/', 1)[-1] for u in a.url), 'games': used, 'positions': kept, 'buckets': BUCKETS,
-        'shards': SHARDS, 'maxPly': a.max_ply, 'speeds': [a.speed] if a.speed else list(SPEED_NAMES), 'built': time.strftime('%Y-%m-%d'),
+        'source': ', '.join(u.rsplit('/', 1)[-1] for u in urls), 'games': used, 'positions': kept, 'buckets': BUCKETS,
+        'shards': SHARDS, 'maxPly': max_ply, 'speeds': [speed], 'built': time.strftime('%Y-%m-%d'),
         'note': 'Lichess open database (CC0). Counts are per rating group (average of both players) as [w,d,b] triples.',
     }
-    with open(os.path.join(a.out, 'meta.json'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(folder, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, indent=1)
-    log(f'Done: {used:,} games, {kept:,} positions in {SHARDS} shards.')
+    log(f'{speed}: {used:,} games, {kept:,} positions in {SHARDS} shards -> {folder}')
+
+
+def main():
+    global SHARDS, MIN_POSITION, MIN_MOVE, MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--speeds', default=','.join(SPEED_NAMES), help='time controls to keep, comma separated (bullet,blitz,rapid,classical)')
+    ap.add_argument('--caps', default='', help='games to keep per time control, in the same order (0 = no limit); default no limit')
+    ap.add_argument('--chunk-min-position', type=int, default=CHUNK_MIN_POSITION, help='inside a chunk, expand a line only once seen this often (lower = deeper, more memory)')
+    ap.add_argument('--chunk-min-move', type=int, default=CHUNK_MIN_MOVE, help='inside a chunk, keep a move only once seen this often')
+    ap.add_argument('--min-parent', type=int, default=MIN_PARENT, help='inside a chunk, create a child only once its parent was seen this often')
+    ap.add_argument('--url', action='append', required=True, help='a monthly .pgn.zst URL (repeat for several months)')
+    ap.add_argument('--games-per-url', type=int, default=10**10, help='games to READ from the start of each file')
+    ap.add_argument('--chunk', type=int, default=400_000, help='qualifying games per in-memory chunk')
+    ap.add_argument('--max-ply', type=int, default=30)
+    ap.add_argument('--shards', type=int, default=SHARDS, help='more shards = smaller files, each fetched on demand')
+    ap.add_argument('--min-position', type=int, default=MIN_POSITION, help='drop positions seen fewer times than this')
+    ap.add_argument('--min-move', type=int, default=MIN_MOVE, help='drop moves seen fewer times than this')
+    ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'book'))
+    a = ap.parse_args()
+    SHARDS, MIN_POSITION, MIN_MOVE = a.shards, a.min_position, a.min_move
+    MIN_PARENT, CHUNK_MIN_POSITION, CHUNK_MIN_MOVE = a.min_parent, a.chunk_min_position, a.chunk_min_move
+    log = lambda m: print(m, flush=True)
+
+    speeds = [s.strip() for s in a.speeds.split(',') if s.strip()]
+    for s in speeds:
+        assert s in SPEED_NAMES, f'unknown time control {s!r}'
+    caps_list = [int(c) for c in a.caps.split(',') if c.strip()] if a.caps else [0] * len(speeds)
+    assert len(caps_list) == len(speeds), '--caps needs one number per time control'
+    caps = dict(zip(speeds, caps_list))
+
+    merged = {s: {} for s in speeds}
+    used = {s: 0 for s in speeds}
+    for url in a.url:
+        log(f'Streaming {url}')
+        resp, text = stream_url(url)
+        gen = games(text, a.games_per_url, a.max_ply, log, caps)   # the caps apply to each month's file
+        done = False
+        while not done:
+            tries = {s: Trie() for s in speeds}
+            counts = {s: 0 for s in speeds}
+            n = 0
+            for sp, b, r, sans in gen:
+                tries[sp].add(b, r, sans)
+                counts[sp] += 1
+                n += 1
+                if n >= a.chunk:
+                    break
+            else:
+                done = True
+            if n:
+                for s in speeds:
+                    if counts[s]:
+                        fold(tries[s], merged[s])
+                        used[s] += counts[s]
+                log(f'  folded a chunk of {n:,} games; ' + ', '.join(f'{s} {used[s]:,} ({len(merged[s]):,} positions)' for s in speeds))
+            del tries
+        resp.close()
+
+    for s in speeds:
+        write_part(merged[s], os.path.join(a.out, s), s, used[s], a.url, a.max_ply, log)
+    log('Done.')
 
 
 if __name__ == '__main__':

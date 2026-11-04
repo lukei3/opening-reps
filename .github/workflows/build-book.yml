@@ -1,11 +1,13 @@
 # Builds the opening book in the cloud, so nothing runs on your own computer.
 #
-# Every month of Lichess games is processed once per time control (bullet, blitz, rapid, classical), all at once on
-# free GitHub machines, then the parts are merged into one book you download. The app lets players choose time
-# controls and rating groups, so the book keeps separate counts for each.
+# Each month of Lichess games is downloaded ONCE (one job per month) and counted for every time control (bullet, blitz,
+# rapid, classical) at the same time, all months in parallel on free GitHub machines. The parts are then merged into one
+# book you download. The app lets players choose time controls and rating groups, so the book keeps separate counts.
 # Run it from the repository's Actions tab: "Build opening book" -> "Run workflow".
+# Several builds can be combined afterwards with "Merge opening book parts".
 #
-# A single job may run for at most 6 hours. The caps below are games KEPT per month and time control.
+# Be kind to Lichess's servers: every month is a download of up to ~30 GB. The caps below keep each job short for recent
+# months. A job may run for at most 6 hours.
 name: Build opening book
 
 on:
@@ -15,23 +17,23 @@ on:
         description: 'Months to process, comma separated (YYYY-MM)'
         default: '2026-09,2026-08,2026-07,2026-06,2026-05,2026-04'
       cap_bullet:
-        description: 'Bullet games to keep per month'
+        description: 'Bullet games to keep per month (0 = skip bullet)'
         default: '6000000'
       cap_blitz:
-        description: 'Blitz games to keep per month'
+        description: 'Blitz games to keep per month (0 = skip blitz)'
         default: '8000000'
       cap_rapid:
-        description: 'Rapid games to keep per month'
+        description: 'Rapid games to keep per month (0 = skip rapid)'
         default: '6000000'
       cap_classical:
-        description: 'Classical games to keep per month'
-        default: '3000000'
+        description: 'Classical games to keep per month (0 = skip). Classical is rare, so this reads the whole month file'
+        default: '0'
       part_min_position:
         description: 'Per part: drop positions seen fewer times than this'
         default: '10'
       final_min_position:
         description: 'After merging: drop positions seen fewer times than this (raise it to shrink the book)'
-        default: '30'
+        default: '40'
       chunk_min_position:
         description: 'Depth control: inside each chunk of games, expand a line once seen this often (lower = deeper, slower, more memory)'
         default: '5'
@@ -49,25 +51,20 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     outputs:
-      parts: ${{ steps.list.outputs.parts }}
+      months: ${{ steps.list.outputs.months }}
     steps:
       - id: list
         env:
           MONTHS: ${{ inputs.months }}
-          CAPS: ${{ toJson(inputs) }}
         run: |
           python3 - <<'PY'
           import json, os, re
           months = [m.strip() for m in os.environ['MONTHS'].split(',') if m.strip()]
           for m in months:
               assert re.fullmatch(r'\d{4}-\d{2}', m), f'bad month: {m!r}'
-          caps = json.loads(os.environ['CAPS'])
-          # a cap of 0 skips that time control. Classical games are rare (about 1% of games), so each classical part has to
-          # read a whole month's file; that can run past the 6 hour limit, so it is best kept to a few months.
-          parts = [{'month': m, 'speed': s, 'cap': int(caps['cap_' + s])}
-                   for m in months for s in ('bullet', 'blitz', 'rapid', 'classical') if int(caps['cap_' + s]) > 0]
+          assert len(months) <= 250, 'too many months for one run (GitHub allows 256 jobs per matrix)'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write('parts=' + json.dumps(parts) + '\n')
+              f.write('months=' + json.dumps(months) + '\n')
           PY
 
   part:
@@ -78,27 +75,36 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        include: ${{ fromJson(needs.plan.outputs.parts) }}
+        month: ${{ fromJson(needs.plan.outputs.months) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install zstandard chess
-      - name: Build this month and time control
+      - name: Build this month
         env:
           MONTH: ${{ matrix.month }}
-          SPEED: ${{ matrix.speed }}
-          CAP: ${{ matrix.cap }}
+          CAP_BULLET: ${{ inputs.cap_bullet }}
+          CAP_BLITZ: ${{ inputs.cap_blitz }}
+          CAP_RAPID: ${{ inputs.cap_rapid }}
+          CAP_CLASSICAL: ${{ inputs.cap_classical }}
           MINPOS: ${{ inputs.part_min_position }}
           CMINPOS: ${{ inputs.chunk_min_position }}
           MINPARENT: ${{ inputs.min_parent }}
           CMINMOVE: ${{ inputs.chunk_min_move }}
           CHUNK: ${{ inputs.chunk_games }}
         run: |
+          speeds=(); caps=()
+          if [ "$CAP_BULLET" -gt 0 ]; then speeds+=(bullet); caps+=("$CAP_BULLET"); fi
+          if [ "$CAP_BLITZ" -gt 0 ]; then speeds+=(blitz); caps+=("$CAP_BLITZ"); fi
+          if [ "$CAP_RAPID" -gt 0 ]; then speeds+=(rapid); caps+=("$CAP_RAPID"); fi
+          if [ "$CAP_CLASSICAL" -gt 0 ]; then speeds+=(classical); caps+=("$CAP_CLASSICAL"); fi
+          [ "${#speeds[@]}" -gt 0 ] || { echo "every time control is set to 0"; exit 1; }
+          SPEEDS=$(IFS=,; echo "${speeds[*]}"); CAPS=$(IFS=,; echo "${caps[*]}")
           /usr/bin/time -v python tools/build_book.py \
             --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
-            --speed "${SPEED}" --max-qualifying "${CAP}" --games-per-url 1000000000 \
+            --speeds "$SPEEDS" --caps "$CAPS" \
             --chunk "${CHUNK}" --shards 1024 --min-position "${MINPOS}" --min-move 3 \
             --chunk-min-position "${CMINPOS}" --min-parent "${MINPARENT}" --chunk-min-move "${CMINMOVE}" \
             --out part 2> time.log || { tail -n 30 time.log; exit 1; }
@@ -106,7 +112,7 @@ jobs:
           du -sh part
       - uses: actions/upload-artifact@v4
         with:
-          name: part-${{ matrix.month }}-${{ matrix.speed }}
+          name: part-${{ matrix.month }}
           path: part
           retention-days: 7   # kept a week so the merge can be re-run with different pruning
 
@@ -127,7 +133,9 @@ jobs:
         env:
           MINPOS: ${{ inputs.final_min_position }}
         run: |
-          python tools/merge_books.py book parts/* --min-position "${MINPOS}" --min-move 5
+          dirs=$(find parts -name meta.json -printf '%h\n' | sort)
+          echo "parts: $(echo "$dirs" | wc -l)"
+          python tools/merge_books.py book $dirs --min-position "${MINPOS}" --min-move 5
           cat book/meta.json
           du -sh book
       - uses: actions/upload-artifact@v4

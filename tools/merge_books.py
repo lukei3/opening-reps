@@ -82,7 +82,7 @@ def main():
     months = sorted({mo for m in metas for mo in re.findall(r'\d{4}-\d{2}', m['source'])})
     meta = dict(metas[0])
     meta.update({
-        'source': f'{len(months)} monthly Lichess dumps, {months[0]} to {months[-1]}',
+        'source': f'{len(months)} monthly Lichess dumps, {months[0]} to {months[-1]}' if months else ', '.join(sorted({m['source'] for m in metas})),
         'games': sum(m['games'] for m in metas),
         'positions': positions,
         'maxPly': max(m['maxPly'] for m in metas),
