@@ -89,8 +89,33 @@ async function renderList() {
     </div>` : '';
   const classics = builtin.filter((e) => e.group !== 'Gambits');
   const gambits = builtin.filter((e) => e.group === 'Gambits');
-  const mine = data().mine;
-  $('stCards').innerHTML = group('Classic openings', classics, false) + group('Gambits', gambits, false) + group('Your imports', mine, true);
+  const pops = await loadPopular();
+  const popularIds = new Set(pops.map((p) => 'li-' + p.id));
+  const have = new Set(data().mine.map((m) => m.id));
+  const mine = data().mine.filter((m) => !popularIds.has(m.id));       // imported popular studies live in their own section
+  const popGroup = pops.length ? `
+    <h3>Popular on Lichess</h3>
+    <p class="muted small stpopnote">Long studies written by other Lichess users, picked for being widely used. They stay on Lichess: Import copies one into this browser only, fetched from Lichess when you press the button. All credit to their authors.</p>
+    <div class="stcards">${pops.map((p) => {
+      const got = have.has('li-' + p.id);
+      return `<div class="stcard stpop">
+        <div class="stinfo">
+          <span class="stname">${esc(p.title)}</span>
+          <span class="stmeta">by ${esc(p.author)} · ${esc(p.topic)}${p.stats ? ` · ${esc(p.stats)}` : ''}</span>
+          <a class="stlink" href="https://lichess.org/study/${esc(p.id)}" target="_blank" rel="noopener">View on Lichess ↗</a>
+        </div>
+        <button type="button" class="${got ? 'ghost' : 'primary'} stimport" data-import="${esc(p.id)}">${got ? 'Open' : 'Import'}</button>
+        ${got ? `<button type="button" class="ghost stdel" data-del="li-${esc(p.id)}" title="Remove this copy" aria-label="Remove ${esc(p.title)}">×</button>` : ''}
+      </div>`;
+    }).join('')}</div>` : '';
+  $('stCards').innerHTML = group('Classic openings', classics, false) + group('Gambits', gambits, false) + popGroup + group('Your imports', mine, true);
+}
+
+let popular = null;
+async function loadPopular() {
+  if (popular) return popular;
+  try { const r = await fetch('data/popular-studies.json'); popular = r.ok ? await r.json() : []; } catch (e) { popular = []; }
+  return popular;
 }
 
 $('stCards').addEventListener('click', async (e) => {
@@ -98,6 +123,15 @@ $('stCards').addEventListener('click', async (e) => {
   if (del) {
     const d = data(); d.mine = d.mine.filter((m) => m.id !== del.dataset.del); delete d.progress[del.dataset.del];
     loaded.delete(del.dataset.del); store.save(); renderList(); return;
+  }
+  const imp = e.target.closest('[data-import]');
+  if (imp) {
+    const entry = data().mine.find((m) => m.id === 'li-' + imp.dataset.import);
+    if (entry) { openStudy(entry); return; }                 // already imported: open it
+    imp.disabled = true; imp.textContent = 'Importing…';
+    await fetchStudyRef({ study: imp.dataset.import, chapter: null });
+    await renderList();                                       // also restores the button if it failed
+    return;
   }
   const open = e.target.closest('[data-open]');
   if (!open) return;
@@ -144,8 +178,10 @@ $('stDetailBack').addEventListener('click', () => { show('stList'); });
 // ---------- import ----------
 
 function setMsg(text, err = false) {
-  const el = $('stMsg');
-  el.textContent = text || ''; el.className = 'stmsg' + (err ? ' err' : '');
+  for (const id of ['stMsg', 'stListMsg']) {     // one in the import panel, one up by the list so it is seen on a phone too
+    const el = $(id);
+    el.textContent = text || ''; el.className = 'stmsg' + (err ? ' err' : '');
+  }
 }
 
 function parseStudyLink(text) {
@@ -176,6 +212,11 @@ async function importPgn(text, source, id) {
 async function fetchLichess() {
   const ref = parseStudyLink($('stUrl').value);
   if (!ref) { setMsg('That does not look like a Lichess study link. It should look like lichess.org/study/abcd1234.', true); return; }
+  await fetchStudyRef(ref);
+}
+
+/** Fetch one study (or one chapter) straight from Lichess, as the person pressing the button, and keep it in this browser. */
+async function fetchStudyRef(ref) {
   setMsg('Fetching from Lichess…');
   const path = ref.chapter ? `${ref.study}/${ref.chapter}` : ref.study;
   let r;

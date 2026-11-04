@@ -20,4 +20,10 @@ The simplest route is to publish the whole project's source under GPLv3 and keep
 
 ## Data
 
-The game data (`book/`) is counts derived from Lichess's open game database, and the opening names are from Lichess's chess-openings dataset. Both are CC0. Nothing is fetched from Lichess while the app runs.
+The game data (`book/`) is counts derived from Lichess's open game database, and the opening names are from Lichess's chess-openings dataset. Both are CC0. Playing and training never contact Lichess.
+
+## Studies
+
+- The seven built-in studies in `data/studies/` were written for this app from standard opening theory, and checked against the book.
+- "Popular on Lichess" (`data/popular-studies.json`) is only a list of titles, authors and links to public Lichess studies. The studies themselves are **not** included in this project: they belong to their authors (Lichess's terms leave user content with the user). When someone presses Import, their own browser fetches that study from Lichess through Lichess's public API, and keeps the copy only in that browser. Studies a person imports from a link or a file are likewise kept only in their own browser.
+- The practice positions in `data/conversions.json` were generated for this app and checked with Stockfish.

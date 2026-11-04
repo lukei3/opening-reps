@@ -683,6 +683,14 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 .stmain, #stImport { min-width: 0; }
 .sthead { margin-bottom: 4px; }
 .sthead h2, #stImport h2 { margin: 0 0 4px; font-size: 20px; }
+.stpop { align-items: stretch; }
+.stpop .stinfo { flex: 1 1 auto; display: grid; gap: 3px; padding: 12px 14px; min-width: 0; }
+.stpop .stimport { flex: none; align-self: center; margin: 0 12px; padding: 8px 14px; }
+.stpop .stdel { flex: 0 0 40px; border-radius: 0 10px 10px 0; }
+.stlink { font-size: 12px; color: #7fb64a; text-decoration: none; }
+.stlink:hover { text-decoration: underline; }
+.stpopnote { margin: -2px 0 10px; }
+#stListMsg:empty { display: none; }
 .stprog { display: block; margin-top: 2px; font-size: 12px; color: #7fb64a; }
 .stdhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 6px; }
 .stdhead h2 { margin: 0 0 4px; font-size: 20px; }
