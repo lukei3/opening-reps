@@ -195,7 +195,7 @@
           <div class="board-wrap"><div id="drBoard"></div><div id="drCount" class="drcount" hidden></div></div>
           <div class="drplayer"><span class="drname">You</span><span id="drClock" class="drclock">0.0</span></div>
         </div>
-        <aside class="drside">
+        <aside class="drside" id="drSide">
           <div class="stbar"><button id="drBack" class="ghost" type="button">‹ Back</button><span id="drTitle" class="sttitle"></span><span id="drStreak" class="drstreak"></span></div>
           <div id="drStatus" class="status"></div>
           <p id="drInfo" class="muted small drinfo" hidden></p>
@@ -203,9 +203,22 @@
             <button id="drHint" class="ghost" type="button" title="Shows a good move, but the clock keeps running">Hint</button>
             <span class="gap"></span>
             <button id="drRetry" class="ghost" type="button" title="Play this same position again (R)">↺ Retry</button>
+            <button id="drAnalyseBtn" class="ghost" type="button" title="Stuck? Give up this attempt and see the analysis">Analyse</button>
             <button id="drSkip" class="ghost" type="button">New position</button>
           </div>
           <div id="drResult" class="card stcoach" hidden></div>
+          <div id="drAna" class="card dranalysis" hidden>
+            <div class="dra-head"><b>Analysis</b><button id="drAnaClose" class="ghost" type="button">‹ Back to the result</button></div>
+            <div class="chips dra-tabs"><button type="button" class="chip on" data-line="game">Your game</button><button type="button" class="chip" data-line="plan">Winning plan</button></div>
+            <div id="drAnaMoves" class="dra-moves"></div>
+            <div class="dra-nav">
+              <button type="button" class="ghost" id="drAnaFirst" aria-label="First position" title="Start (Home)">⏮</button>
+              <button type="button" class="ghost" id="drAnaPrev" aria-label="Previous move" title="Back (←)">◀</button>
+              <button type="button" class="ghost" id="drAnaNext" aria-label="Next move" title="Forward (→)">▶</button>
+              <button type="button" class="ghost" id="drAnaLast" aria-label="Last position" title="End">⏭</button>
+            </div>
+            <div id="drAnaEngine" class="dra-engine"></div>
+          </div>
         </aside>
       </div>
     </div>

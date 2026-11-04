@@ -2,7 +2,7 @@
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import * as store from './store.js';
-import { analyse, prefetch, cancelPrefetch, bestMove, warmUp } from './engine.js';
+import { analyse, evaluate, prefetch, cancelPrefetch, bestMove, warmUp } from './engine.js';
 import { play, moveSound } from './sounds.js';
 
 const $ = (id) => document.getElementById(id);
@@ -144,6 +144,7 @@ $('drCats').addEventListener('click', (e) => { const b = e.target.closest('[data
 $('drCTimes').addEventListener('click', (e) => { const b = e.target.closest('[data-ctime]'); if (b) { const v = b.dataset.ctime; prefs().ctime = v === 'real' ? 'real' : +v; store.save(); renderSetup(); } });
 
 export function showDrills() {
+  closeAnalysis();
   if (R) stopRun();
   $('drSetup').hidden = false; $('drPlay').hidden = true;
   renderSetup();
@@ -190,6 +191,7 @@ function tick() {
 /** Start a position: { id, name, title, fen, user, seconds, inc, info (html), again } */
 function begin(spec) {
   clearInterval(timer);
+  closeAnalysis();
   board.clearPremoves();
   R = {
     id: ++seq, kind: { id: spec.id, name: spec.name }, seconds: spec.seconds, inc: spec.inc || 0, user: spec.user, chess: new Chess(spec.fen),
@@ -403,10 +405,10 @@ function end(won, why) {
   $('drClock').classList.remove('low');
   $('drStreak').textContent = streak ? `Streak ${streak}` : '';
   $('drResult').hidden = false;
-  $('drResult').innerHTML = `${line}<div class="row"><button type="button" class="primary" id="drNext">Next position</button><button type="button" class="ghost" id="drRedo">↺ Retry</button><button type="button" class="ghost" id="drChange">Change drill</button></div>`;
+  $('drResult').innerHTML = `${line}<div class="row"><button type="button" class="primary" id="drNext">Next position</button><button type="button" class="ghost" id="drAnaOpen">Analyse</button><button type="button" class="ghost" id="drChange">Change drill</button></div>`;
   const again = R.again;
   $('drNext').onclick = () => again();
-  $('drRedo').onclick = () => retry();
+  $('drAnaOpen').onclick = () => openAnalysis();
   $('drChange').onclick = () => showDrills();
   $('drNext').focus();
 }
@@ -437,4 +439,177 @@ $('drHint').addEventListener('click', async () => {
   try { uci = await bestMove(R.chess.fen(), 150); } catch (e) { uci = null; }
   if (!R || R.id !== id || R.over || !uci) return;
   board.setArrows([{ from: uci.slice(0, 2), to: uci.slice(2, 4), color: '#003088', opacity: 0.55, width: 17 / 64 }]);
+});
+
+
+// ---------- analysis: see what happened, and how the position is won ----------
+
+let A = null;   // { token, user, startFen, which: 'game' | 'plan', idx, lines: { game, plan } }
+const fullmoveOf = (fen) => parseInt(fen.split(' ')[5], 10) || 1;
+
+function buildLine(startFen, moves) {
+  const c = new Chess(startFen);
+  const line = { fens: [c.fen()], sans: [], movers: [], ucis: [], evals: [], building: false };
+  for (const m of moves) {
+    const turn = c.turn();
+    const mv = c.move({ from: m.from, to: m.to, promotion: m.promotion });
+    line.sans.push(mv.san); line.movers.push(turn); line.ucis.push(mv.from + mv.to + (mv.promotion || '')); line.fens.push(c.fen());
+  }
+  return line;
+}
+
+/** An evaluation chip's text and colour (White's point of view, like every analysis board). */
+function chipOf(r) {
+  if (!r) return { text: '…', cls: 'z' };
+  if (r.text) return r;
+  if (r.mate != null && r.mate !== 0) return { text: '#' + Math.abs(r.mate), cls: r.mate > 0 ? 'w' : 'b' };
+  const v = Math.round(r.cp / 10) / 10;
+  return { text: v === 0 ? '0.0' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1), cls: Math.abs(v) <= 0.5 ? 'z' : v > 0 ? 'w' : 'b' };
+}
+
+async function evalFor(fen) {
+  const g = new Chess(fen);
+  if (g.isCheckmate()) return { text: 'Mate', cls: g.turn() === 'w' ? 'b' : 'w' };
+  if (g.isDraw() || g.isStalemate() || g.isInsufficientMaterial()) return { text: 'Draw', cls: 'z' };
+  try { return await evaluate(fen, 12); } catch (e) { return null; }
+}
+
+function pvText(fen, ucis, max = 9) {
+  const c = new Chess(fen);
+  let no = fullmoveOf(fen), out = '', first = true;
+  for (const u of ucis.slice(0, max)) {
+    const turn = c.turn();
+    let mv;
+    try { mv = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] }); } catch (e) { break; }
+    out += turn === 'w' ? `${no}. ${mv.san} ` : `${first ? no + '… ' : ''}${mv.san} `;
+    if (turn === 'b') no += 1;
+    first = false;
+  }
+  return out.trim();
+}
+
+function openAnalysis() {
+  if (!R || !R.spec) return;
+  if (!R.over) end(false, 'You gave up to see the analysis');     // an attempt you stop to analyse counts as a miss
+  const game = buildLine(R.spec.fen, R.chess.history({ verbose: true }));
+  A = { token: ++seq, user: R.user, startFen: R.spec.fen, which: 'game', idx: 0, lines: { game, plan: null } };
+  $('drSide').classList.add('analysing');
+  $('drAna').hidden = false;
+  document.querySelectorAll('#drAna .dra-tabs .chip').forEach((b) => b.classList.toggle('on', b.dataset.line === 'game'));
+  board.clearPremoves(); board.setEnabled(false);
+  renderAnalysis();
+  fillEvals(game, A.token);
+}
+
+function closeAnalysis() {
+  if (!A) return;
+  A = null;
+  $('drSide').classList.remove('analysing');
+  $('drAna').hidden = true;
+  cancelPrefetch();
+  if (R) render();                                 // the board shows the real position again
+}
+
+const lineOf = () => A.lines[A.which];
+
+async function fillEvals(line, token) {
+  for (let i = 0; i < line.fens.length; i += 1) {
+    if (!A || A.token !== token) return;
+    if (line.evals[i]) continue;
+    line.evals[i] = await evalFor(line.fens[i]);
+    if (!A || A.token !== token) return;
+    if (lineOf() === line) renderMoves();
+  }
+}
+
+async function buildPlan() {
+  const token = A.token;
+  const line = { fens: [A.startFen], sans: [], movers: [], ucis: [], evals: [], building: true };
+  A.lines.plan = line;
+  const c = new Chess(A.startFen);
+  for (let ply = 0; ply < 120 && !c.isGameOver(); ply += 1) {
+    const u = await bestMove(c.fen(), 110);
+    if (!A || A.token !== token) return;
+    if (!u) break;
+    const turn = c.turn();
+    const mv = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
+    line.sans.push(mv.san); line.movers.push(turn); line.ucis.push(u); line.fens.push(c.fen());
+    if (A.which === 'plan') renderMoves();
+  }
+  line.building = false;
+  if (A && A.token === token && A.which === 'plan') renderMoves();
+  fillEvals(line, token);
+}
+
+function renderMoves() {
+  const line = lineOf();
+  const startTurn = line.fens[0].split(' ')[1];
+  const base = fullmoveOf(line.fens[0]);
+  let html = `<span class="dra-ply${A.idx === 0 ? ' cur' : ''}" data-i="0">Start</span>`;
+  line.sans.forEach((san, i) => {
+    const moveNo = base + Math.floor((i + (startTurn === 'b' ? 1 : 0)) / 2);
+    const mover = line.movers[i];
+    const prefix = mover === 'w' ? `<span class="dra-no">${moveNo}.</span>` : (i === 0 || line.movers[i - 1] !== 'w' ? `<span class="dra-no">${moveNo}…</span>` : '');
+    const chip = chipOf(line.evals[i + 1]);
+    html += `${prefix}<span class="dra-ply ${mover === A.user ? 'me' : 'eng'}${A.idx === i + 1 ? ' cur' : ''}" data-i="${i + 1}">${esc(san)}<i class="evbox ${chip.cls} dra-ev">${esc(chip.text)}</i></span>`;
+  });
+  if (line.building) html += '<span class="dra-wait">working out the plan…</span>';
+  const el = $('drAnaMoves');
+  el.innerHTML = html;
+  const cur = el.querySelector('.cur');
+  if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  // the plan grows while the engine works it out, so the buttons follow its length
+  $('drAnaPrev').disabled = $('drAnaFirst').disabled = A.idx === 0;
+  $('drAnaNext').disabled = $('drAnaLast').disabled = A.idx >= line.fens.length - 1;
+}
+
+async function renderAnalysis() {
+  const line = lineOf();
+  A.idx = Math.max(0, Math.min(A.idx, line.fens.length - 1));
+  const fen = line.fens[A.idx];
+  const g = new Chess(fen);
+  const last = A.idx > 0 ? line.ucis[A.idx - 1] : null;
+  board.set({ pieces: pieceMap(g), orientation: A.user, lastMove: last ? [last.slice(0, 2), last.slice(2, 4)] : null, check: g.inCheck() ? kingSquare(g, g.turn()) : null });
+  board.setArrows([]);
+  renderMoves();
+  $('drAnaPrev').disabled = $('drAnaFirst').disabled = A.idx === 0;
+  $('drAnaNext').disabled = $('drAnaLast').disabled = A.idx >= line.fens.length - 1;
+  // the engine's best lines for this position
+  const box = $('drAnaEngine');
+  const token = A.token, idx = A.idx, which = A.which;
+  if (g.isGameOver()) { box.innerHTML = `<p class="muted small">${g.isCheckmate() ? `Checkmate: ${g.turn() === 'w' ? 'Black' : 'White'} wins.` : 'The game is drawn here.'}</p>`; return; }
+  box.innerHTML = '<p class="muted small">The engine is looking…</p>';
+  let res = null;
+  try { res = await analyse(fen, 14, 3, 1); } catch (e) { res = null; }
+  if (!A || A.token !== token || A.idx !== idx || A.which !== which) return;
+  const lines = (res && res.lines || []).filter((l) => l.uci);
+  if (!lines.length) { box.innerHTML = ''; return; }
+  box.innerHTML = lines.map((l) => {
+    const chip = chipOf(l);
+    return `<div class="dra-line"><i class="evbox ${chip.cls}">${esc(chip.text)}</i><span>${esc(pvText(fen, l.pv && l.pv.length ? l.pv : [l.uci]))}</span></div>`;
+  }).join('') + `<p class="muted small">Evaluations are from White's point of view. The arrow on the board is the engine's first choice.</p>`;
+  board.setArrows([{ from: lines[0].uci.slice(0, 2), to: lines[0].uci.slice(2, 4), color: '#003088', opacity: 0.55, width: 17 / 64 }]);
+}
+
+function anaGo(i) { if (A) { A.idx = i; renderAnalysis(); } }
+$('drAnaMoves').addEventListener('click', (e) => { const p = e.target.closest('[data-i]'); if (p) anaGo(+p.dataset.i); });
+$('drAnaFirst').addEventListener('click', () => anaGo(0));
+$('drAnaPrev').addEventListener('click', () => anaGo(A ? A.idx - 1 : 0));
+$('drAnaNext').addEventListener('click', () => anaGo(A ? A.idx + 1 : 0));
+$('drAnaLast').addEventListener('click', () => anaGo(A ? lineOf().fens.length - 1 : 0));
+$('drAnaClose').addEventListener('click', () => closeAnalysis());
+$('drAnalyseBtn').addEventListener('click', () => openAnalysis());
+document.querySelector('#drAna .dra-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-line]'); if (!b || !A) return;
+  A.which = b.dataset.line; A.idx = 0;
+  document.querySelectorAll('#drAna .dra-tabs .chip').forEach((x) => x.classList.toggle('on', x === b));
+  if (A.which === 'plan' && !A.lines.plan) buildPlan();
+  renderAnalysis();
+});
+window.addEventListener('keydown', (e) => {
+  if (!A || $('tab-drills').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); anaGo(A.idx - 1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); anaGo(A.idx + 1); }
+  else if (e.key === 'Home') { e.preventDefault(); anaGo(0); }
+  else if (e.key === 'End') { e.preventDefault(); anaGo(lineOf().fens.length - 1); }
 });
