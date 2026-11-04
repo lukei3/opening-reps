@@ -58,6 +58,7 @@ function banner(text, err = false) {
 // ---------- tabs ----------
 
 function showTab(name) {
+  document.querySelectorAll('.dragghost').forEach((g) => g.remove());   // no stray dragged piece follows you to another tab
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
   for (const t of ['train', 'studies', 'drills', 'progress', 'settings']) $('tab-' + t).hidden = t !== name;
   if (name === 'studies') showStudies();

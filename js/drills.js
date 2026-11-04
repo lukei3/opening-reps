@@ -235,7 +235,7 @@ function countIn(run, steps) {
     const arrow = '<svg class="drc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 12.5H9.5V21h5v-8.5h5z"/></svg>';
     el.innerHTML = `
       <div class="drc-card">
-        <img class="drc-king" src="pieces/cburnett/${run.user}K.svg" alt="">
+        <img class="drc-king" src="pieces/cburnett/${run.user}K.svg" alt="" draggable="false">
         <div class="drc-title">You play ${side}</div>
         <div class="drc-line">${arrow}<span>Your pieces move up the board</span></div>
         <div class="drc-note">${run.user === 'b' ? 'The board is turned around so you are at the bottom.<br>' : ''}${run.chess.turn() === run.user ? 'You move first.' : 'The engine moves first.'}</div>

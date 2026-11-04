@@ -104,6 +104,7 @@ table.ana .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cf { right: 3px; bottom: 1px; } .cr { left: 3px; top: 1px; }
 .arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
 .dragghost { position: fixed; z-index: 50; pointer-events: none; }
+.sq img, .dragghost, .drc-king, .promopick img, .sidebtn img { -webkit-user-drag: none; user-select: none; }
 .moves { margin: 10px 0 4px; font-size: 14px; color: var(--muted); line-height: 1.7; }
 .moves b { color: var(--text); font-weight: 600; }
 .moves .pre { opacity: .55; }

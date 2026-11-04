@@ -27,6 +27,11 @@ export class Board {
     this.premoves = [];                // queued moves [{from, to}], played in order once it is your turn
     el.classList.add('board');
     window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.premoves.length) this.clearPremoves(); });
+    // a drag must never be left hanging: if the page misses the mouse button being released, the dragged piece would
+    // otherwise stay stuck to the cursor. These end it however the drag was interrupted.
+    window.addEventListener('pointercancel', () => this.cancelDrag());
+    window.addEventListener('blur', () => this.cancelDrag());
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.cancelDrag(); });
     this.marks = { arrows: [], circles: [] };   // the user's own annotations (right-click)
     this.rc = null;
     el.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -283,13 +288,25 @@ export class Board {
     }
   }
 
+  /** Drop whatever is being dragged: the dragged image goes, and the piece is shown on its square again. */
+  cancelDrag() {
+    const d = this.drag;
+    if (!d) return;
+    this.drag = null;
+    if (d.ghost) d.ghost.remove();
+    this.render();
+  }
+
   onMoveEvt(e) {
     if (!this.drag) return;
+    if (e.buttons === 0) { this.cancelDrag(); return; }     // the button was released somewhere we did not see
     const d = this.drag;
     if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
     d.moved = true;
     if (!d.ghost) {
+      document.querySelectorAll('.dragghost').forEach((g) => g.remove());   // never more than one dragged image on the page
       d.ghost = document.createElement('img');
+      d.ghost.draggable = false;
       d.ghost.src = pieceSrc(d.pc);
       d.ghost.className = 'dragghost';
       const w = this.el.getBoundingClientRect().width / 8;
