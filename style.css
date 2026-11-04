@@ -699,28 +699,34 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 .drlayout { display: grid; gap: 10px; }
 .drleft, .drside { min-width: 0; }
 .drleft .board-wrap { max-width: none; position: relative; }
-/* the count-in that covers the board before the clock starts: a quiet card, nothing flashing */
-.drcount { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(20, 19, 17, 0.38); z-index: 5; cursor: pointer; }
+/* the count-in that covers the board before the clock starts */
+.drcount { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(18, 17, 15, 0.45); z-index: 5; cursor: pointer; }
 .drcount[hidden] { display: none; }
-.drc-card { position: relative; display: grid; justify-items: center; gap: 6px; padding: 22px 30px 18px; max-width: min(86%, 330px); text-align: center; border-radius: 16px; background: rgba(28, 27, 24, 0.94); border: 1px solid #3d3a35; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45); }
-.drc-king { width: 52px; height: 52px; padding: 6px; border-radius: 50%; background: #e8e6df; box-sizing: border-box; }
-.drc-title { font-size: 18px; font-weight: 650; color: #f1efe9; letter-spacing: 0.01em; }
-.drc-line { display: flex; align-items: center; gap: 7px; color: #cfcbc2; font-size: 14px; }
-.drc-up { width: 16px; height: 16px; stroke: #7fb64a; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.drc-note { color: #8e8a82; font-size: 13px; }
-.drc-ring { position: relative; width: 62px; height: 62px; margin: 10px 0 2px; }
-.drc-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.drc-ring circle { fill: none; stroke-width: 3; }
-.drc-ring .bg { stroke: #3d3a35; }
-.drc-ring .fg { stroke: #7fb64a; stroke-linecap: round; stroke-dasharray: 113.1; stroke-dashoffset: 0; animation: drcRing linear forwards; }
-.drc-ring span { position: absolute; inset: 0; display: grid; place-items: center; font: 600 22px ui-monospace, Menlo, Consolas, monospace; color: #f1efe9; }
-.drc-actions { display: flex; gap: 14px; margin-top: 4px; }
-.drc-actions button { padding: 4px 2px; border: 0; background: none; color: #8e8a82; font: inherit; font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #55514b; }
-.drc-actions button:hover { color: #e8e6df; }
-/* a faint line up the side of the board showing the way you are going */
-.drc-way { position: absolute; right: 14px; top: 14%; bottom: 14%; width: 14px; pointer-events: none; opacity: 0.55; }
-.drc-way svg { width: 100%; height: 100%; stroke: #9fdc63; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-@keyframes drcRing { to { stroke-dashoffset: 113.1; } }
+.drc-card { position: relative; width: 304px; max-width: 88%; box-sizing: border-box; display: grid; justify-items: center; gap: 8px; padding: 26px 24px 22px; text-align: center;
+  border-radius: 20px; background: linear-gradient(180deg, #2c2b27 0%, #211f1c 100%); border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55), 0 2px 0 rgba(255, 255, 255, 0.05) inset; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+.drc-king { width: 60px; height: 60px; padding: 7px; border-radius: 50%; box-sizing: border-box; background: #eceae3; box-shadow: 0 0 0 4px rgba(127, 182, 74, 0.28), 0 6px 16px rgba(0, 0, 0, 0.4); }
+.drc-title { margin-top: 6px; font-size: 21px; font-weight: 700; color: #f6f4ee; letter-spacing: -0.01em; }
+.drc-line { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px 7px 11px; border-radius: 999px; background: rgba(127, 182, 74, 0.14); color: #b9e38a; font-size: 14px; font-weight: 600; }
+.drc-up { width: 18px; height: 18px; flex: none; fill: currentColor; }
+.drc-note { color: #9b978e; font-size: 13px; line-height: 1.4; }
+.drc-ring { position: relative; width: 68px; height: 68px; margin: 8px 0 4px; }
+.drc-ring svg { width: 68px; height: 68px; transform: rotate(-90deg); }
+.drc-ring circle { fill: none; stroke-width: 3.5; }
+.drc-ring .bg { stroke: rgba(255, 255, 255, 0.1); }
+.drc-ring .fg { stroke: #7fb64a; stroke-linecap: round; stroke-dasharray: 125.66; stroke-dashoffset: 0; animation: drcRing linear forwards; }
+.drc-ring span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 26px ui-monospace, Menlo, Consolas, monospace; color: #f6f4ee; }
+.drc-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 6px; }
+.drc-actions button { padding: 12px 10px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.drc-go { border: 0; background: #7fb64a; color: #1a1917; box-shadow: 0 2px 0 #5f8f33; }
+.drc-go:hover { background: #8cc556; }
+.drc-off { border: 1px solid rgba(255, 255, 255, 0.28); background: transparent; color: #ecebe5; }
+.drc-off:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.45); }
+/* a clean arrow up the right-hand side of the board, drawn at its natural size so it is never stretched or cut */
+.drc-way { position: absolute; right: 14px; top: 12%; bottom: 12%; width: 22px; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.drc-way svg { width: 22px; height: 22px; flex: none; fill: #9fdc63; }
+.drc-way i { flex: 1; width: 3px; margin-top: -2px; border-radius: 2px; background: linear-gradient(to top, rgba(159, 220, 99, 0), #9fdc63); }
+@keyframes drcRing { to { stroke-dashoffset: 125.66; } }
 @media (prefers-reduced-motion: reduce) { .drc-ring .fg { animation: none; } }
 .drside .stbar { margin-bottom: 8px; }
 #drBoard { width: 100%; }

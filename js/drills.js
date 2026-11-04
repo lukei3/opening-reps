@@ -221,18 +221,21 @@ function countIn(run, steps) {
   return new Promise((resolve) => {
     const el = $('drCount');
     const side = run.user === 'w' ? 'White' : 'Black';
-    const chev = '<svg class="drc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>';
+    const arrow = '<svg class="drc-up" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 12.5H9.5V21h5v-8.5h5z"/></svg>';
     el.innerHTML = `
-      <div class="drc-way"><svg viewBox="0 0 14 100" preserveAspectRatio="none" aria-hidden="true"><path d="M7 98V4M1.5 11 7 4l5.5 7"/></svg></div>
+      <div class="drc-way"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 12.5H9.5V21h5v-8.5h5z"/></svg><i></i></div>
       <div class="drc-card">
         <img class="drc-king" src="pieces/cburnett/${run.user}K.svg" alt="">
         <div class="drc-title">You play ${side}</div>
-        <div class="drc-line">${chev}<span>Your pieces move up the board</span></div>
-        <div class="drc-note">${run.user === 'b' ? 'The board is turned around so you are at the bottom. ' : ''}${run.chess.turn() === run.user ? 'You move first.' : 'The engine moves first.'}</div>
-        <div class="drc-ring"><svg viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" cx="22" cy="22" r="18" style="animation-duration:${steps}s"/></svg><span id="drNum">${steps}</span></div>
-        <div class="drc-actions"><button type="button" class="drc-go">Start now</button><button type="button" class="drc-off">Turn off the count-in</button></div>
+        <div class="drc-line">${arrow}<span>Your pieces move up the board</span></div>
+        <div class="drc-note">${run.user === 'b' ? 'The board is turned around so you are at the bottom.<br>' : ''}${run.chess.turn() === run.user ? 'You move first.' : 'The engine moves first.'}</div>
+        <div class="drc-ring"><svg viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="20"/><circle class="fg" cx="22" cy="22" r="20" style="animation-duration:${steps}s"/></svg><span id="drNum">${steps}</span></div>
+        <div class="drc-actions"><button type="button" class="drc-go">Start now</button><button type="button" class="drc-off">Turn off count-in</button></div>
       </div>`;
     el.hidden = false;
+    // centring can leave the card on a half pixel, which makes its text and icons slightly soft: snap it to whole pixels
+    const card = el.querySelector('.drc-card'), cr = card.getBoundingClientRect();
+    card.style.transform = `translate(${Math.round(cr.left) - cr.left}px, ${Math.round(cr.top) - cr.top}px)`;
     el.querySelector('.drc-off').onclick = (e) => { e.stopPropagation(); prefs().countIn = false; store.save(); finish(); };
     el.querySelector('.drc-go').onclick = (e) => { e.stopPropagation(); finish(); };
     let n = steps;
