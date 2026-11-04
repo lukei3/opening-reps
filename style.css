@@ -88,6 +88,13 @@ table.ana .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sq.sel::before { content: ""; position: absolute; inset: 0; background: rgba(79, 156, 245, .5); }
 .sq.pm::after { content: ""; position: absolute; inset: 0; background: rgba(214, 62, 50, .5); z-index: 0; pointer-events: none; }   /* a queued premove, red like chess.com */
 .sq.pm img { z-index: 1; }
+/* chess.com-style promotion picker: a column of four pieces on the promotion square */
+.promoback { position: absolute; inset: 0; z-index: 8; background: rgba(0, 0, 0, 0.38); cursor: default; }
+.promopick { position: absolute; z-index: 9; width: 12.5%; height: 50%; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; background: #f1efe9; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.25); }
+.promopick button { flex: 1 1 0; min-height: 0; padding: 4%; border: 0; border-radius: 0; background: #f1efe9; cursor: pointer; display: grid; place-items: center; }
+.promopick button + button { border-top: 1px solid rgba(0, 0, 0, 0.08); }
+.promopick button:hover, .promopick button:focus-visible { background: #cfe3b3; outline: none; }
+.promopick img { width: 100%; height: 100%; pointer-events: none; }
 .sq.check::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgba(236,106,94,.9), rgba(236,106,94,0) 70%); }
 .sq img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .dot { position: absolute; width: 28%; height: 28%; border-radius: 50%; background: rgba(20, 30, 0, .28); pointer-events: none; z-index: 2; }

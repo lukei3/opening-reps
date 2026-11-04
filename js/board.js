@@ -194,6 +194,49 @@ export class Board {
     return out;
   }
 
+  /**
+   * Chess.com's promotion picker: a column of Queen, Knight, Rook and Bishop opens on the square the pawn is going to,
+   * growing toward the middle of the board. Click one (or press Q, N, R or B) to choose; click elsewhere or press Escape
+   * to cancel. Resolves to 'q' | 'n' | 'r' | 'b', or null when cancelled.
+   */
+  promptPromotion(to, color) {
+    return new Promise((resolve) => {
+      this.promoting = true;
+      const [x, y] = this.xy(to);                 // the square's centre in board units (0..8)
+      const down = y < 4;                         // a square on the top half: the column grows downward
+      const order = down ? ['q', 'n', 'r', 'b'] : ['b', 'r', 'n', 'q'];   // the queen is always on the edge square
+      const back = document.createElement('div'); back.className = 'promoback';
+      const col = document.createElement('div'); col.className = 'promopick';
+      col.style.left = `${(x - 0.5) * 12.5}%`;
+      col.style.top = `${(down ? y - 0.5 : y + 0.5 - 4) * 12.5}%`;
+      const done = (v) => {
+        window.removeEventListener('keydown', onKey, true);
+        back.remove(); col.remove();
+        this.promoting = false;
+        this.render();
+        resolve(v);
+      };
+      const onKey = (e) => {
+        const k = e.key.toLowerCase();
+        if (k === 'escape') { e.preventDefault(); done(null); }
+        else if ('qnrb'.includes(k) && k.length === 1) { e.preventDefault(); done(k); }
+      };
+      for (const p of order) {
+        const b = document.createElement('button');
+        b.type = 'button'; b.dataset.piece = p;
+        b.setAttribute('aria-label', { q: 'Queen', n: 'Knight', r: 'Rook', b: 'Bishop' }[p]);
+        const img = document.createElement('img'); img.src = pieceSrc(color + p.toUpperCase()); img.alt = '';
+        b.appendChild(img);
+        b.onclick = (e) => { e.stopPropagation(); done(p); };
+        col.appendChild(b);
+      }
+      back.onclick = () => done(null);
+      back.addEventListener('contextmenu', (e) => { e.preventDefault(); done(null); });
+      window.addEventListener('keydown', onKey, true);
+      this.el.append(back, col);
+    });
+  }
+
   addPremove(from, to) { this.premoves.push({ from, to }); this.render(); }
   shiftPremove() { const pm = this.premoves.shift(); this.render(); return pm; }
   clearPremoves() { if (!this.premoves.length) return; this.premoves = []; this.selected = null; this.targets = []; this.render(); }
@@ -212,6 +255,7 @@ export class Board {
   }
 
   onDown(e) {
+    if (this.promoting) return;     // the promotion picker is open: only it takes input
     if (e.button === 2) {
       if (this.premoves.length) { this.clearPremoves(); e.preventDefault(); return; }   // right-click cancels premoves, as on chess.com
       const from = this.sqAt(e.clientX, e.clientY);

@@ -279,12 +279,23 @@ function applyMove(child) {
   if (child.comment) coach(`<p>${esc(child.comment)}</p>`);
 }
 
-function onUserMove(from, to) {
+async function onUserMove(from, to) {
   if (!T || T.over) return;
   const g = T.chess;
   const legal = g.moves({ square: from, verbose: true }).find((m) => m.to === to);
   if (!legal) { renderBoard(); return; }
-  const uci = from + to + (legal.promotion ? 'q' : '');
+  let promo = '';
+  if (legal.promotion) {                      // chess.com's picker: choose the piece the pawn becomes
+    const id = T.id;
+    const shown = pieceMap(g);
+    shown[to] = shown[from]; delete shown[from];
+    board.set({ pieces: shown, orientation: T.user, lastMove: [from, to] });
+    const pick = await board.promptPromotion(to, T.user);
+    if (!T || T.id !== id || T.over) return;
+    if (!pick) { renderBoard(); return; }
+    promo = pick;
+  }
+  const uci = from + to + promo;
   const match = T.node.children.find((c) => c.uci === uci);
   if (!match) {
     T.mistakes += 1;

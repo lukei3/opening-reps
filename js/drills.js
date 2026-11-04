@@ -194,6 +194,7 @@ function begin(spec) {
   R = {
     id: ++seq, kind: { id: spec.id, name: spec.name }, seconds: spec.seconds, inc: spec.inc || 0, user: spec.user, chess: new Chess(spec.fen),
     left: spec.seconds * 1000, turnStart: 0, moves: 0, hints: 0, over: false, again: spec.again, convert: !!spec.convert,
+    spec,                                    // kept so Retry can play the very same position again
   };
   $('drSetup').hidden = true; $('drPlay').hidden = false; $('drResult').hidden = true;
   $('drTitle').textContent = spec.title;
@@ -210,7 +211,7 @@ function begin(spec) {
   const run = R;
   if (run.chess.turn() === run.user) prefetchReplies();   // the engine warms up during the count-in
   // a short orientation first, so you know which side you are and which way you are going before the clock starts
-  countIn(run, 5).then(() => {
+  (spec.skipCountIn ? Promise.resolve() : countIn(run, 5)).then(() => {
     if (!R || R.id !== run.id) return;
     board.setEnabled(true, R.user);
     board.canMove = true;
@@ -308,20 +309,35 @@ function runPremoves() {
   if (!pm) return;
   const legal = R.chess.moves({ square: pm.from, verbose: true }).some((m) => m.to === pm.to);
   board.shiftPremove();
-  if (legal) onUserMove(pm.from, pm.to);
+  if (legal) onUserMove(pm.from, pm.to, true);
   else board.clearPremoves();
 }
 
 function pauseClock() { if (R.turnStart) { R.left -= performance.now() - R.turnStart; R.turnStart = 0; } }
 
-async function onUserMove(from, to) {
+async function onUserMove(from, to, autoPromote = false) {
   if (!R || R.over || R.chess.turn() !== R.user) return;
   const g = R.chess;
-  const legal = g.moves({ square: from, verbose: true }).find((m) => m.to === to && (!m.promotion || m.promotion === 'q'));
-  if (!legal) { render(); return; }
+  const options = g.moves({ square: from, verbose: true }).filter((m) => m.to === to);
+  if (!options.length) { render(); return; }
+  let promotion = options[0].promotion;       // only set when the pawn reaches the last rank
+  if (promotion) {
+    if (autoPromote) promotion = 'q';         // a premoved promotion becomes a queen, as on chess.com
+    else {
+      // chess.com's picker: the pawn sits on the last rank and a column of pieces opens there. Your clock keeps running.
+      const id = R.id;
+      const shown = pieceMap(g);
+      shown[to] = shown[from]; delete shown[from];
+      board.set({ pieces: shown, orientation: R.user, lastMove: [from, to] });
+      const pick = await board.promptPromotion(to, R.user);
+      if (!R || R.id !== id || R.over) return;
+      if (!pick) { render(); return; }        // cancelled: the pawn goes back and you can choose another move
+      promotion = pick;
+    }
+  }
   pauseClock();
   if (R.left <= 0) { end(false, 'Out of time'); return; }
-  const mv = g.move({ from, to, promotion: legal.promotion });
+  const mv = g.move({ from, to, promotion });
   R.moves += 1;
   R.left += R.inc * 1000;                    // the increment, as on a real clock
   render();
@@ -387,9 +403,10 @@ function end(won, why) {
   $('drClock').classList.remove('low');
   $('drStreak').textContent = streak ? `Streak ${streak}` : '';
   $('drResult').hidden = false;
-  $('drResult').innerHTML = `${line}<div class="row"><button type="button" class="primary" id="drNext">Next position</button><button type="button" class="ghost" id="drChange">Change drill</button></div>`;
+  $('drResult').innerHTML = `${line}<div class="row"><button type="button" class="primary" id="drNext">Next position</button><button type="button" class="ghost" id="drRedo">↺ Retry</button><button type="button" class="ghost" id="drChange">Change drill</button></div>`;
   const again = R.again;
   $('drNext').onclick = () => again();
+  $('drRedo').onclick = () => retry();
   $('drChange').onclick = () => showDrills();
   $('drNext').focus();
 }
@@ -399,6 +416,19 @@ function end(won, why) {
 $('drStart').addEventListener('click', () => { streak = 0; (prefs().mode === 'convert' ? startConvert : startMate)(); });
 $('drBack').addEventListener('click', () => showDrills());
 $('drSkip').addEventListener('click', () => { if (R && R.again) R.again(); });
+
+/** Play the same position again from the start, with a fresh clock and no count-in (you already know the position). */
+function retry() {
+  if (!R || !R.spec) return;
+  begin({ ...R.spec, skipCountIn: true });
+}
+$('drRetry').addEventListener('click', retry);
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'r' && e.key !== 'R') return;
+  if (e.ctrlKey || e.metaKey || e.altKey || $('drPlay').hidden || $('tab-drills').hidden) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''))) return;
+  retry();
+});
 $('drHint').addEventListener('click', async () => {
   if (!R || R.over || R.chess.turn() !== R.user) return;
   const id = R.id;
