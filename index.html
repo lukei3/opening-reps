@@ -187,19 +187,24 @@
     </div>
 
     <div id="drPlay" hidden>
-      <div class="stbar"><button id="drBack" class="ghost" type="button">‹ Back</button><span id="drTitle" class="sttitle"></span><span id="drStreak" class="drstreak"></span></div>
-      <div class="stboard">
-        <div id="drClock" class="drclock">0.0</div>
-        <div class="board-wrap"><div id="drBoard"></div></div>
-        <div id="drStatus" class="status"></div>
-        <p id="drInfo" class="muted small drinfo" hidden></p>
-        <div class="row gamebar">
-          <button id="drHint" class="ghost" type="button" title="Shows a good move, but the clock keeps running">Hint</button>
-          <span class="gap"></span>
-          <button id="drSkip" class="ghost" type="button">New position</button>
+      <div class="drlayout">
+        <div class="drleft">
+          <div class="drplayer"><span class="drname">Engine</span><span id="drOppClock" class="drclock small" hidden></span></div>
+          <div class="board-wrap"><div id="drBoard"></div><div id="drCount" class="drcount" hidden></div></div>
+          <div class="drplayer"><span class="drname">You</span><span id="drClock" class="drclock">0.0</span></div>
         </div>
+        <aside class="drside">
+          <div class="stbar"><button id="drBack" class="ghost" type="button">‹ Back</button><span id="drTitle" class="sttitle"></span><span id="drStreak" class="drstreak"></span></div>
+          <div id="drStatus" class="status"></div>
+          <p id="drInfo" class="muted small drinfo" hidden></p>
+          <div class="row gamebar">
+            <button id="drHint" class="ghost" type="button" title="Shows a good move, but the clock keeps running">Hint</button>
+            <span class="gap"></span>
+            <button id="drSkip" class="ghost" type="button">New position</button>
+          </div>
+          <div id="drResult" class="card stcoach" hidden></div>
+        </aside>
       </div>
-      <div id="drResult" class="card stcoach" hidden></div>
     </div>
   </section>
 

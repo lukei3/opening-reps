@@ -176,6 +176,7 @@ function tick() {
   const el = $('drClock');
   el.textContent = fmtTime(left);
   el.classList.toggle('low', left < 10000);
+  el.classList.toggle('on', !!R.turnStart);   // lit while your clock is running, like chess.com
   if (left <= 0) end(false, 'Out of time');
 }
 
@@ -192,14 +193,49 @@ function begin(spec) {
   $('drStreak').textContent = streak ? `Streak ${streak}` : '';
   $('drInfo').innerHTML = spec.info || '';
   $('drInfo').hidden = !spec.info;
+  $('drOppClock').hidden = !spec.oppSeconds;                       // a real game's opponent clock, shown as it was
+  if (spec.oppSeconds) $('drOppClock').textContent = fmtTime(spec.oppSeconds * 1000);
   render();
-  board.setEnabled(true, R.user);
-  board.canMove = true;
-  setStatus(spec.convert ? 'Convert it to checkmate' : 'Mate before the clock runs out', '');
+  board.setEnabled(false);
+  setStatus('Get ready', '');
   timer = setInterval(tick, 50);
   tick();
-  if (R.chess.turn() === R.user) { R.turnStart = performance.now(); prefetchReplies(); }
-  else opponentTurn();     // the real position had the opponent to move
+  const run = R;
+  if (run.chess.turn() === run.user) prefetchReplies();   // the engine warms up during the count-in
+  // a short orientation first, so you know which side you are and which way you are going before the clock starts
+  countIn(run, streak ? 2 : 3).then(() => {
+    if (!R || R.id !== run.id) return;
+    board.setEnabled(true, R.user);
+    board.canMove = true;
+    setStatus(spec.convert ? 'Convert it to checkmate' : 'Mate before the clock runs out', '');
+    if (R.chess.turn() === R.user) R.turnStart = performance.now();
+    else opponentTurn();     // the real position had the opponent to move
+  });
+}
+
+/** Cover the board for a moment: your colour, the direction your pieces move, who starts, then 3-2-1 (tap or Enter to skip). */
+function countIn(run, steps) {
+  return new Promise((resolve) => {
+    const el = $('drCount');
+    const side = run.user === 'w' ? 'White' : 'Black';
+    el.innerHTML = `<div class="drc-card">
+      <div class="drc-side ${run.user === 'w' ? 'white' : 'black'}">You play <b>${side}</b></div>
+      <div class="drc-dir"><span class="drc-arrow">↑</span> Your pieces start at the bottom and move <b>up</b> the board</div>
+      <div class="drc-num" id="drNum">${steps}</div>
+      <div class="drc-sub">${run.chess.turn() === run.user ? 'You move first' : 'The engine moves first'} · tap to start now</div>
+    </div>`;
+    el.hidden = false;
+    let n = steps;
+    const finish = () => { clearInterval(iv); window.removeEventListener('keydown', onKey); el.hidden = true; el.onclick = null; resolve(); };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); finish(); } };
+    const iv = setInterval(() => {
+      n -= 1;
+      if (n <= 0 || !R || R.id !== run.id) finish();
+      else $('drNum').textContent = n;
+    }, 800);
+    el.onclick = finish;
+    window.addEventListener('keydown', onKey);
+  });
 }
 
 function startMate() {
@@ -229,6 +265,7 @@ async function startConvert() {
     `From a real ${esc(e.ev || 'online')} game${e.tc ? ` (${esc(e.tc.replace('+', ' + '))})` : ''}${e.elo ? `, rated about ${e.elo}` : ''}. In the game you had ${fmtTime(e.wc * 1000)} s and your opponent ${fmtTime(e.lc * 1000)} s.${e.site ? ` <a href="https://lichess.org/${esc(e.site)}" target="_blank" rel="noopener">See the game</a>` : ''}`;
   begin({
     id: 'cv', name: 'Convert', convert: true, title: `Convert · ${catName} · ${real ? 'real clock' : seconds + ' s'}`, fen: e.fen, user: e.winner, seconds, inc,
+    oppSeconds: !e.synthetic && real ? e.lc : 0,
     info: `${where}${inc ? ` Increment: +${inc} s per move.` : ''}`, again: startConvert,
   });
 }

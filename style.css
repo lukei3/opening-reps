@@ -695,11 +695,31 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 }
 
 /* mate drills */
-#drPlay:not([hidden]) { display: grid; gap: 14px; }
-#drPlay .stbar { grid-column: 1 / -1; margin-bottom: 0; }
+/* Laid out like chess.com: the board in the middle of the page, the opponent above it and you below it, a panel on the right. */
+.drlayout { display: grid; gap: 10px; }
+.drleft, .drside { min-width: 0; }
+.drleft .board-wrap { max-width: none; position: relative; }
+/* the count-in that covers the board before the clock starts */
+.drcount { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(28, 27, 24, 0.55); z-index: 5; cursor: pointer; }
+.drcount[hidden] { display: none; }
+.drc-card { text-align: center; padding: 16px; max-width: 86%; }
+.drc-side { font-size: 20px; margin-bottom: 8px; }
+.drc-side b { padding: 2px 10px; border-radius: 6px; }
+.drc-side.white b { background: #f1efe9; color: #262522; }
+.drc-side.black b { background: #0f0e0d; color: #f1efe9; box-shadow: inset 0 0 0 1px #6a655d; }
+.drc-dir { color: #d6d3cb; font-size: 15px; }
+.drc-arrow { display: inline-block; font-size: 22px; color: #7fb64a; font-weight: 800; margin-right: 4px; }
+.drc-num { font: 800 84px/1.1 ui-monospace, Menlo, Consolas, monospace; color: #7fb64a; margin: 10px 0 6px; }
+.drc-sub { color: #aaa69e; font-size: 14px; }
+.drside .stbar { margin-bottom: 8px; }
 #drBoard { width: 100%; }
-.drclock { font: 700 44px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.02em; text-align: center; padding: 10px 0; margin-bottom: 8px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.drplayer { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 4px 0; }
+.drname { font-weight: 650; color: var(--muted, #9a9892); }
+.drclock { font: 700 28px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.02em; text-align: right; min-width: 118px; padding: 8px 14px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.drclock.small { font-size: 20px; opacity: 0.75; }
+.drclock.on { background: #e8e6df; color: #262522; border-color: #e8e6df; }   /* your clock is running */
 .drclock.low { color: #e0594a; border-color: #e0594a; }
+.drclock.on.low { background: #e0594a; color: #fff; border-color: #e0594a; }
 .drstreak { margin-left: auto; font-weight: 650; color: #7fb64a; white-space: nowrap; }
 #drSetup .filters { margin-top: 10px; }
 .drmodes { margin: 6px 0 10px; }
@@ -709,7 +729,9 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 #drSetup [hidden] { display: none !important; }
 #drSetup .row { margin-top: 12px; }
 @media (min-width: 980px) {
-  #drPlay:not([hidden]) { grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); align-items: start; }
+  /* the board is as tall as the window allows, centred, with the side panel next to it */
+  .drlayout { grid-template-columns: minmax(0, min(calc(100vh - 210px), 720px)) minmax(280px, 360px); justify-content: center; align-items: start; gap: 28px; }
+  #stTrain:not([hidden]) { grid-template-columns: minmax(0, min(calc(100vh - 210px), 640px)) minmax(280px, 360px); justify-content: center; gap: 28px; }
 }
 
 /* which games to learn from: toggle buttons for time controls and rating groups */
