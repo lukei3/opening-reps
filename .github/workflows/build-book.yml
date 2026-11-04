@@ -26,8 +26,8 @@ on:
         description: 'Rapid games to keep per month (0 = skip rapid)'
         default: '6000000'
       cap_classical:
-        description: 'Classical games to keep per month (0 = skip). Classical is rare, so this reads the whole month file'
-        default: '0'
+        description: 'Classical games to keep per month (0 = skip). Classical is rare (about 1% of games), so this reads the whole month file'
+        default: '3000000'
       part_min_position:
         description: 'Per part: drop positions seen fewer times than this'
         default: '10'
@@ -104,7 +104,7 @@ jobs:
           SPEEDS=$(IFS=,; echo "${speeds[*]}"); CAPS=$(IFS=,; echo "${caps[*]}")
           /usr/bin/time -v python tools/build_book.py \
             --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
-            --speeds "$SPEEDS" --caps "$CAPS" \
+            --speeds "$SPEEDS" --caps "$CAPS" --max-minutes 335 \
             --chunk "${CHUNK}" --shards 1024 --min-position "${MINPOS}" --min-move 3 \
             --chunk-min-position "${CMINPOS}" --min-parent "${MINPARENT}" --chunk-min-move "${CMINMOVE}" \
             --out part 2> time.log || { tail -n 30 time.log; exit 1; }

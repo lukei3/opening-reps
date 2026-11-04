@@ -10,6 +10,7 @@ import { bookMeta } from './book.js';
 import { openingsDb, nameFromFens } from './names.js';
 import { play, moveSound, setSound, soundOn, warmSounds } from './sounds.js';
 import { showStudies } from './studies.js';
+import { showDrills } from './drills.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -58,8 +59,9 @@ function banner(text, err = false) {
 
 function showTab(name) {
   document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
-  for (const t of ['train', 'studies', 'progress', 'settings']) $('tab-' + t).hidden = t !== name;
+  for (const t of ['train', 'studies', 'drills', 'progress', 'settings']) $('tab-' + t).hidden = t !== name;
   if (name === 'studies') showStudies();
+  if (name === 'drills') showDrills();
   if (name === 'progress') renderProgress();
   if (name === 'settings') renderSettingsInfo();
 }

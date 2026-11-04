@@ -15,6 +15,7 @@
   <nav id="tabs">
     <button data-tab="train" class="on">Train</button>
     <button data-tab="studies">Studies</button>
+    <button data-tab="drills">Drills</button>
     <button data-tab="progress">Progress</button>
     <button data-tab="settings" id="devtab" hidden>Developer</button>
   </nav>
@@ -164,6 +165,35 @@
         </div>
       </div>
       <div id="stCoach" class="card stcoach"></div>
+    </div>
+  </section>
+
+  <!-- DRILLS -->
+  <section id="tab-drills" hidden>
+    <div id="drSetup" class="card">
+      <h2>Checkmate drills</h2>
+      <p class="muted small">Deliver checkmate before your clock runs out. You play the stronger side from a random position, and the engine defends as well as it can.</p>
+      <div class="filters">
+        <div class="filterrow"><span class="filterlabel">Pieces</span><div id="drKinds" class="chips"></div></div>
+        <div class="filterrow"><span class="filterlabel">Time on the clock</span><div id="drTimes" class="chips"></div></div>
+      </div>
+      <p id="drBests" class="muted small"></p>
+      <div class="row"><button id="drStart" class="primary" type="button">Start</button></div>
+    </div>
+
+    <div id="drPlay" hidden>
+      <div class="stbar"><button id="drBack" class="ghost" type="button">‹ Back</button><span id="drTitle" class="sttitle"></span><span id="drStreak" class="drstreak"></span></div>
+      <div class="stboard">
+        <div id="drClock" class="drclock">0.0</div>
+        <div class="board-wrap"><div id="drBoard"></div></div>
+        <div id="drStatus" class="status"></div>
+        <div class="row gamebar">
+          <button id="drHint" class="ghost" type="button" title="Shows a good move, but the clock keeps running">Hint</button>
+          <span class="gap"></span>
+          <button id="drSkip" class="ghost" type="button">New position</button>
+        </div>
+      </div>
+      <div id="drResult" class="card stcoach" hidden></div>
     </div>
   </section>
 

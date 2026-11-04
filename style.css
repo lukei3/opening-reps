@@ -692,6 +692,19 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
   #stTrain:not([hidden]) { grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); align-items: start; }
 }
 
+/* mate drills */
+#drPlay:not([hidden]) { display: grid; gap: 14px; }
+#drPlay .stbar { grid-column: 1 / -1; margin-bottom: 0; }
+#drBoard { width: 100%; }
+.drclock { font: 700 44px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.02em; text-align: center; padding: 10px 0; margin-bottom: 8px; border-radius: 10px; background: var(--panel2); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.drclock.low { color: #e0594a; border-color: #e0594a; }
+.drstreak { margin-left: auto; font-weight: 650; color: #7fb64a; white-space: nowrap; }
+#drSetup .filters { margin-top: 10px; }
+#drSetup .row { margin-top: 12px; }
+@media (min-width: 980px) {
+  #drPlay:not([hidden]) { grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); align-items: start; }
+}
+
 /* which games to learn from: toggle buttons for time controls and rating groups */
 .filters { display: grid; gap: 8px; margin: 14px 0 4px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); }
 .filterhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 600; }
@@ -712,7 +725,7 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
   #tabs button { min-height: 40px; }
   #tabs { gap: 2px; }
   #tabs button { padding-left: 9px; padding-right: 9px; font-size: 14px; }
-  header.top h1 { font-size: 16px; gap: 6px; }
+  header.top h1 { font-size: 0; gap: 0; }   /* four tabs need the room: show just the logo on phones */
   header.top h1 .logo { width: 22px; height: 22px; }
   .stbar button { white-space: nowrap; }
   .engmeta { display: none; }

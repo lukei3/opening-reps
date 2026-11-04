@@ -55,11 +55,12 @@ def speed_of(event):
     return None
 
 
-def games(stream, max_games, max_ply, log, caps):
+def games(stream, max_games, max_ply, log, caps, deadline=None):
     """Yield (speed, bucket, result_idx, [san...]) for games that pass the filters.
 
     `caps` maps each wanted time control to how many games to keep (0 = no limit). Reading stops after max_games games
-    are READ, or once every wanted time control has reached its cap."""
+    are READ, once every wanted time control has reached its cap, or when the clock passes `deadline` (a time.time()
+    value): what has been counted so far is kept, so a slow download costs the end of a month, not the whole month."""
     event = we = be = res = None
     seen = 0
     kept = {s: 0 for s in caps}
@@ -83,6 +84,9 @@ def games(stream, max_games, max_ply, log, caps):
         seen += 1
         if seen % 250000 == 0:
             log(f'  read {seen:,} games ({seen / (time.time() - t0):,.0f}/s); kept ' + ', '.join(f'{s} {n:,}' for s, n in kept.items()))
+        if deadline and seen % 2000 == 0 and time.time() > deadline:
+            log('  time limit reached: stopping here and keeping what has been counted')
+            return
         sp = speed_of(event) if event else None
         if sp in caps and (not caps[sp] or kept[sp] < caps[sp]) and we and be and we.isdigit() and be.isdigit() and res in RESULT_IDX:
             avg = (int(we) + int(be)) // 2
@@ -213,6 +217,7 @@ def main():
     ap.add_argument('--min-parent', type=int, default=MIN_PARENT, help='inside a chunk, create a child only once its parent was seen this often')
     ap.add_argument('--url', action='append', required=True, help='a monthly .pgn.zst URL (repeat for several months)')
     ap.add_argument('--games-per-url', type=int, default=10**10, help='games to READ from the start of each file')
+    ap.add_argument('--max-minutes', type=float, default=0, help='stop reading after this long and keep what has been counted (0 = no limit)')
     ap.add_argument('--chunk', type=int, default=400_000, help='qualifying games per in-memory chunk')
     ap.add_argument('--max-ply', type=int, default=30)
     ap.add_argument('--shards', type=int, default=SHARDS, help='more shards = smaller files, each fetched on demand')
@@ -233,10 +238,11 @@ def main():
 
     merged = {s: {} for s in speeds}
     used = {s: 0 for s in speeds}
+    deadline = time.time() + 60 * a.max_minutes if a.max_minutes else None
     for url in a.url:
         log(f'Streaming {url}')
         resp, text = stream_url(url)
-        gen = games(text, a.games_per_url, a.max_ply, log, caps)   # the caps apply to each month's file
+        gen = games(text, a.games_per_url, a.max_ply, log, caps, deadline)   # the caps apply to each month's file
         done = False
         while not done:
             tries = {s: Trie() for s in speeds}
