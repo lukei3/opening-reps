@@ -1,0 +1,66 @@
+# Finds real endgame positions to practise converting (see tools/build_conversions.py), one job per month of Lichess games.
+# Run it from the Actions tab: "Find conversion positions" -> "Run workflow", then download the artifact(s) and give them to
+# the trainer's data step. Each job reads only the start of its month's file, so it is much lighter than a book build.
+name: Find conversion positions
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'Months to read, comma separated (YYYY-MM)'
+        default: '2026-09,2026-08,2026-07'
+      games:
+        description: 'Games to read from the start of each month'
+        default: '1500000'
+      max_per_sig:
+        description: 'Keep at most this many positions per material pattern'
+        default: '150'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      months: ${{ steps.list.outputs.months }}
+    steps:
+      - id: list
+        env:
+          MONTHS: ${{ inputs.months }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          months = [m.strip() for m in os.environ['MONTHS'].split(',') if m.strip()]
+          for m in months:
+              assert re.fullmatch(r'\d{4}-\d{2}', m), f'bad month: {m!r}'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('months=' + json.dumps(months) + '\n')
+          PY
+
+  find:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 358
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install zstandard chess
+      - name: Scan this month
+        env:
+          MONTH: ${{ matrix.month }}
+          GAMES: ${{ inputs.games }}
+          PERSIG: ${{ inputs.max_per_sig }}
+        run: |
+          python tools/build_conversions.py \
+            --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
+            --games "${GAMES}" --max-minutes 330 --max-per-sig "${PERSIG}" --out "candidates-${MONTH}.jsonl"
+          wc -l "candidates-${MONTH}.jsonl"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conversions-${{ matrix.month }}
+          path: candidates-${{ matrix.month }}.jsonl
+          retention-days: 14
