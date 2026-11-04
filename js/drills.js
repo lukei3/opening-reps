@@ -270,6 +270,15 @@ function startMate() {
 }
 
 const parseInc = (tc) => { const m = /^\d+\+(\d+)$/.exec(tc || ''); return m ? +m[1] : 0; };
+/** A number of seconds the way a player says it: 11 s, or 24:17 from a minute up. */
+const clockText = (s) => (s >= 60 ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : `${Math.round(s)} s`);
+/** "180+2" as players write it: 3+2 (a base time under a minute stays in seconds). */
+const tcText = (tc) => {
+  const m = /^(\d+)\+(\d+)$/.exec(tc || '');
+  if (!m) return '';
+  const base = +m[1];
+  return `${base >= 60 ? (base / 60).toFixed(base % 60 ? 1 : 0).replace(/\.0$/, '') : base + 's'}+${m[2]}`;
+};
 
 async function startConvert() {
   const p = prefs();
@@ -278,14 +287,17 @@ async function startConvert() {
   if (!pool.length) { $('drBests').textContent = 'No positions in this set yet. Try another set.'; showDrills(); return; }
   const fresh = pool.filter(({ i }) => !recent.includes(i));
   const choices = fresh.length ? fresh : pool;
-  const { e, i } = choices[rand(choices.length)];
+  // real positions from real games come up most of the time; the practice positions fill the gaps
+  const realOnes = choices.filter(({ e: x }) => !x.synthetic);
+  const from = realOnes.length && Math.random() < 0.75 ? realOnes : choices;
+  const { e, i } = from[rand(from.length)];
   recent.push(i); if (recent.length > 25) recent.shift();
   const real = p.ctime === 'real';
   const seconds = real ? Math.max(20, Math.min(300, Math.round(e.wc))) : +p.ctime;
   const inc = real ? parseInc(e.tc) : 0;
   const catName = (CATS.find(([k]) => k === (p.cat === 'all' ? e.cat[0] : p.cat)) || [0, 'Mixed'])[1];
   const where = e.synthetic ? (levelOf(e) === 'tricky' ? 'A tricky practice position: it is winning, but only one or two moves keep the win, so look for the plan.' : 'A practice position.') :
-    `From a real ${esc(e.ev || 'online')} game${e.tc ? ` (${esc(e.tc.replace('+', ' + '))})` : ''}${e.elo ? `, rated about ${e.elo}` : ''}. In the game you had ${fmtTime(e.wc * 1000)} s and your opponent ${fmtTime(e.lc * 1000)} s.${e.site ? ` <a href="https://lichess.org/${esc(e.site)}" target="_blank" rel="noopener">See the game</a>` : ''}`;
+    `From a real ${esc((e.ev || 'online').toLowerCase())} game${tcText(e.tc) ? ` (${esc(tcText(e.tc))})` : ''}${e.elo ? `, rated about ${e.elo}` : ''}. In the game you had ${clockText(e.wc)} and your opponent ${clockText(e.lc)}.${real && seconds !== Math.round(e.wc) ? ` You get ${clockText(seconds)} here.` : ''}${e.site ? ` <a href="https://lichess.org/${esc(e.site)}" target="_blank" rel="noopener">See the game</a>` : ''}`;
   begin({
     id: 'cv', name: 'Convert', convert: true, title: `Convert · ${catName} · ${real ? 'real clock' : seconds + ' s'}`, fen: e.fen, user: e.winner, seconds, inc,
     oppSeconds: !e.synthetic && real ? e.lc : 0,
