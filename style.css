@@ -702,6 +702,11 @@ section[id^="tab-"]:not([hidden]), #setup:not([hidden]), #game:not([hidden]) { a
 .drclock.low { color: #e0594a; border-color: #e0594a; }
 .drstreak { margin-left: auto; font-weight: 650; color: #7fb64a; white-space: nowrap; }
 #drSetup .filters { margin-top: 10px; }
+.drmodes { margin: 6px 0 10px; }
+.drmodes .chip { padding: 9px 12px; }
+.drinfo { margin: 6px 0 4px; }
+.drinfo a { color: #7fb64a; }
+#drSetup [hidden] { display: none !important; }
 #drSetup .row { margin-top: 12px; }
 @media (min-width: 980px) {
   #drPlay:not([hidden]) { grid-template-columns: minmax(0, 560px) minmax(260px, 1fr); align-items: start; }
