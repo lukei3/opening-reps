@@ -1,0 +1,80 @@
+# Plans lab (see lab/plans/README.md): pull whole games of one opening family out of the raw monthly Lichess files.
+# One job per month. Each stops as soon as it has kept enough games, so it reads only the start of the month's file.
+# Run it from the Actions tab: "Plans lab: games for one opening" -> "Run workflow". Nothing in the app uses this.
+name: "Plans lab: games for one opening"
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'A short label for the opening family (used in the artifact names)'
+        default: 'kid'
+      eco:
+        description: 'ECO range to keep, for example E60-E99 for the Kings Indian family'
+        default: 'E60-E99'
+      months:
+        description: 'Months to read, comma separated (YYYY-MM)'
+        default: '2023-01,2023-02,2023-03,2023-04,2023-05,2023-06,2023-07,2023-08,2023-09,2023-10,2023-11,2023-12'
+      cap:
+        description: 'Games to keep per month'
+        default: '40000'
+      min_rating:
+        description: 'Both players at least this rating'
+        default: '1400'
+      max_rating:
+        description: 'Both players at most this rating'
+        default: '2500'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      months: ${{ steps.list.outputs.months }}
+    steps:
+      - id: list
+        env:
+          MONTHS: ${{ inputs.months }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re
+          months = [m.strip() for m in os.environ['MONTHS'].split(',') if m.strip()]
+          for m in months:
+              assert re.fullmatch(r'\d{4}-\d{2}', m), f'bad month: {m!r}'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('months=' + json.dumps(months) + '\n')
+          PY
+
+  extract:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install zstandard
+      - name: Pull the games
+        env:
+          NAME: ${{ inputs.name }}
+          MONTH: ${{ matrix.month }}
+          ECO: ${{ inputs.eco }}
+          CAP: ${{ inputs.cap }}
+          MINR: ${{ inputs.min_rating }}
+          MAXR: ${{ inputs.max_rating }}
+        run: |
+          python tools/plans/extract_games.py \
+            --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
+            --eco "${ECO}" --cap "${CAP}" --min-rating "${MINR}" --max-rating "${MAXR}" --max-minutes 150 \
+            --out "${NAME}-${MONTH}.jsonl.gz"
+          ls -l "${NAME}-${MONTH}.jsonl.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plans-${{ inputs.name }}-${{ matrix.month }}
+          path: ${{ inputs.name }}-${{ matrix.month }}.jsonl.gz
+          retention-days: 30
