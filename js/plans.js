@@ -3,6 +3,7 @@
 
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
+import { showAdvisor } from './advisor.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -99,7 +100,19 @@ function renderCard() {
   drawBoard();
 }
 
-export async function showPlans() {
+let mode = 'adv', modeWired = false;
+export function showPlans() {
+  if (!modeWired) {
+    modeWired = true;
+    $('plMode').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) { mode = b.dataset.mode; showPlans(); } });
+  }
+  document.querySelectorAll('#plMode .chip').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
+  $('plAdvPane').hidden = mode !== 'adv';
+  $('plStatsPane').hidden = mode !== 'stats';
+  if (mode === 'adv') showAdvisor(); else showStats();
+}
+
+async function showStats() {
   const msg = $('plMsg');
   try { await load(); } catch (e) { msg.textContent = 'The plans data did not load. Check your connection and try again.'; return; }
   msg.textContent = '';

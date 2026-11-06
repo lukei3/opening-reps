@@ -1,4 +1,4 @@
-/* Anything marked hidden must really be hidden, whatever display value a rule gives it */
+﻿/* Anything marked hidden must really be hidden, whatever display value a rule gives it */
 [hidden] { display: none !important; }
 :root {
   --bg: #16181c; --panel: #1f2228; --panel2: #272b33; --line: #343944;
@@ -143,8 +143,8 @@ table.alts .san { font-weight: 650; }
 .tree li { margin: 2px 0; }
 .tree summary { cursor: pointer; padding: 3px 0; list-style: none; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .tree summary::-webkit-details-marker { display: none; }
-.tree summary::before { content: "▸"; color: var(--muted); font-size: 11px; width: 10px; }
-.tree details[open] > summary::before { content: "▾"; }
+.tree summary::before { content: "â–¸"; color: var(--muted); font-size: 11px; width: 10px; }
+.tree details[open] > summary::before { content: "â–¾"; }
 .tree .leaf { padding: 3px 0 3px 16px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dotc { width: 9px; height: 9px; border-radius: 50%; background: var(--line); display: inline-block; flex: 0 0 auto; }
 .st-solid .dotc, .dotc.st-solid { background: var(--good); }
@@ -852,7 +852,7 @@ table.ana th:nth-child(2) { text-align: center; }
 .liveeval .chip.evbox { min-width: 52px; font-size: 14px; }
 
 /* ---------- Plans tab ---------- */
-.pl-wrap { display: grid; gap: 14px; max-width: 1040px; margin: 0 auto; }
+.pl-wrap { display: grid; gap: 14px; width: 100%; max-width: 1040px; margin: 0 auto; }
 .pl-points { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.5; font-size: 14px; }
 .pl-share { margin-left: 8px; color: var(--muted); font-size: 12px; }
 #plPicker .chip { flex: 0 1 auto; }
@@ -873,4 +873,27 @@ table.ana th:nth-child(2) { text-align: center; }
 .pl-bar i.up { left: 50%; background: var(--good); }
 .pl-bar i.down { right: 50%; background: var(--bad); }
 .pl-bar i.faint { opacity: 0.35; }
-@media (max-width: 820px) { .pl-card { grid-template-columns: 1fr; } }
+@media (max-width: 979px) { .pl-card { grid-template-columns: 1fr; } }
+
+/* ---------- Plan advisor ---------- */
+.pl-modes { margin-bottom: 4px; }
+#plMode .chip { flex: 0 1 auto; padding: 8px 16px; }
+.ad-ctl { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.ad-ctl select, .ad-ctl input { padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
+.ad-ctl input { flex: 1 1 260px; }
+.ad-grid { display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: 22px; align-items: start; }
+@media (max-width: 979px) { .ad-grid { grid-template-columns: 1fr; } }
+.ad-plan { padding: 12px 14px; border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; margin-bottom: 8px; cursor: pointer; font-size: 13.5px; line-height: 1.45; }
+.ad-plan p { margin: 6px 0 0; }
+.ad-plan.on { background: rgba(255, 255, 255, 0.05); }
+.ad-plan.good { border-left-color: var(--good); }
+.ad-plan.maybe { border-left-color: var(--warn); }
+.ad-plan.avoid { border-left-color: var(--bad); }
+.ad-plan.na { border-left-color: var(--line); opacity: 0.65; }
+.ad-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ad-badge { font-size: 11.5px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+.ad-badge.good { color: var(--good); } .ad-badge.maybe { color: var(--warn); } .ad-badge.avoid { color: var(--bad); } .ad-badge.na { color: var(--muted); }
+.ad-h { margin: 18px 0 8px; font-size: 15px; }
+.ad-idea { padding: 8px 0; border-top: 1px solid var(--line); }
+
+#tab-plans { width: 100%; }

@@ -243,7 +243,27 @@
 
   <!-- PROGRESS -->
   <section id="tab-plans" hidden>
-    <div class="pl-wrap">
+    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip on" data-mode="adv">Plan advisor</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
+    <div class="pl-wrap" id="plAdvPane">
+      <div class="sthead"><h2>Plan advisor</h2><p class="muted small">Pick a position, and the advisor reads what matters in it (the pawn race, weak pawns, outposts, open files, bishops, mobility) and says which plans the real games support, and which they warn against. The rules come from 480,000 King's Indian games.</p></div>
+      <div class="ad-ctl">
+        <select id="adPos" aria-label="Position"></select>
+        <select id="adMe" aria-label="Side"><option value="b">I am Black</option><option value="w">I am White</option></select>
+      </div>
+      <div class="ad-ctl" id="adFenRow" hidden><input id="adFen" type="text" placeholder="Paste a FEN" spellcheck="false"><button id="adGo" type="button" class="primary">Analyse</button></div>
+      <div class="ad-grid">
+        <div>
+          <div class="board-wrap"><div id="adBoard"></div></div>
+          <p class="muted small" id="adStatus"></p>
+        </div>
+        <div>
+          <div id="adMenu"></div>
+          <h3 class="ad-h">What the engine's best moves are for</h3>
+          <div id="adIdeas"></div>
+        </div>
+      </div>
+    </div>
+    <div class="pl-wrap" id="plStatsPane" hidden>
       <div class="sthead"><h2>Plans</h2><p class="muted small">After the opening line ends, what do players actually do, and does it work? Pick a structure from the King's Indian, then a plan.</p></div>
       <div id="plMsg" class="stmsg" role="status"></div>
       <div id="plOverview" class="card"></div>
