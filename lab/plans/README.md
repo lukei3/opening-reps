@@ -27,7 +27,8 @@ starts again from the raw monthly Lichess files and keeps full games for chosen 
   predicts "pushes pawns against the enemy king over moves 13 to 25" better than castling alone or castling plus recent
   pawn moves. Result: `out/kid-model.md` (AUC 0.71 for the full table, 0.61 for momentum, 0.58 for castling only).
 - Step 5 is built and run on a 20,400-game sample: `out/kid-engine.md` (Stockfish depth 12 at moves 12 and 25).
-- Next: step 6, the teaching format, decided together before anything touches the app.
+- Step 6 started: the Plans tab in the app (plan cards), a private quiz and engine-line finder in `demo/`, a researched `FEATURES.md`, and condition tests (`kid-conditions`, `kid-targets`, `kid-breaks`, `kid-pieces`).
+- `GUIDE.md` pulls the findings together: what works, when, and the warnings.
 
 Run order, for the record:
 
