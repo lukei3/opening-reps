@@ -14,6 +14,21 @@ game build (January 2019 to September 2024): about 42% of games are still in it 
 and almost none at move 12. Famous plan-heavy positions are thin or missing. Plan research needs whole games, so it
 starts again from the raw monthly Lichess files and keeps full games for chosen openings.
 
+## Where things stand
+
+- Step 1 is built: `tools/plans/extract_games.py`, run in the cloud by the "Plans lab: games for one opening" workflow.
+- Step 2 is built: `tools/plans/features.py` turns each game into numbers (castling, pawn moves by wing, a snapshot at
+  moves 10, 12, 15, 20, 25, 30).
+- Step 3 is built: `tools/plans/plan_stats.py` groups games by structure, labels each side's plan, and compares results
+  with what the ratings predict. `out/kid-sample-report.md` is the result on a 2,544-game test sample; the margins are
+  wide, so read it as a check that the pipeline works, not as findings.
+- Next: run steps 2 and 3 on the full set of King's Indian games (about half a million) once the cloud pull finishes.
+
+Run order, for the record:
+
+    python tools/plans/features.py kid-2023-*.jsonl.gz --out features.jsonl.gz
+    python tools/plans/plan_stats.py features.jsonl.gz --name kid --out-dir lab/plans/out
+
 ## Steps (one at a time)
 
 1. **Games for one opening.** Pull whole games for one opening family (say the King's Indian, ECO E60 to E99) from the raw
