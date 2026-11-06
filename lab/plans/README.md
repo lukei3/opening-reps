@@ -1,4 +1,4 @@
-# Plans lab
+﻿# Plans lab
 
 A separate workspace for one question: after the opening line ends (move 10 to 12), **what is the plan?**
 Which side to attack, which pawn break to prepare, where the pieces belong, and what a real opponent usually does.
@@ -26,7 +26,8 @@ starts again from the raw monthly Lichess files and keeps full games for chosen 
 - Step 4 is built: `tools/plans/ml_plans.py` makes a 109-feature table per side at move 12 and tests whether a model
   predicts "pushes pawns against the enemy king over moves 13 to 25" better than castling alone or castling plus recent
   pawn moves. Result: `out/kid-model.md` (AUC 0.71 for the full table, 0.61 for momentum, 0.58 for castling only).
-- Next: step 5, the engine check.
+- Step 5 is built and run on a 20,400-game sample: `out/kid-engine.md` (Stockfish depth 12 at moves 12 and 25).
+- Next: step 6, the teaching format, decided together before anything touches the app.
 
 Run order, for the record:
 
