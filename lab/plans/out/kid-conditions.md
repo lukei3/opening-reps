@@ -25,12 +25,40 @@ For each condition the table gives, for the side in question:
 | semi-open | 179,355 | 28% | -1.1 ± 0.4 | +0.2 ± 0.3 | **-1.4 ± 0.5** | -0.29 ± 0.14 (2,641) |
 | tension | 158,069 | 27% | -0.9 ± 0.5 | +0.5 ± 0.3 | **-1.4 ± 0.5** | -0.31 ± 0.16 (2,214) |
 
-## Attackers minus defenders around the enemy king (weighted: Q4, R2, B2, N2)
+## Attackers minus defenders, counting pieces that can reach the king zone in one move (weights Q4, R2, B2, N2), in four equal groups
 
 | Condition | Games | Storm rate | Storm result | No-storm result | Benefit of storming | Engine (storming) |
 |---|---|---|---|---|---|---|
-| -2 to 0 | 17,454 | 29% | -2.0 ± 1.3 | +0.9 ± 0.8 | **-2.9 ± 1.6** | -0.75 ± 0.47 (265) |
-| ≤ -3 | 621,122 | 27% | -1.2 ± 0.2 | +0.4 ± 0.1 | **-1.6 ± 0.3** | -0.24 ± 0.08 (8,999) |
+| 1 most defended (≤ -10) | 235,632 | 29% | -1.0 ± 0.4 | +0.2 ± 0.2 | **-1.2 ± 0.4** | -0.16 ± 0.12 (3,565) |
+| 2 (up to -8) | 137,574 | 27% | -1.6 ± 0.5 | +0.3 ± 0.3 | **-1.9 ± 0.6** | -0.28 ± 0.17 (1,911) |
+| 3 (up to -6) | 124,491 | 27% | -0.9 ± 0.5 | +0.4 ± 0.3 | **-1.3 ± 0.6** | -0.37 ± 0.17 (1,868) |
+| 4 most attacked (> -6) | 141,617 | 26% | -1.5 ± 0.5 | +1.0 ± 0.3 | **-2.4 ± 0.6** | -0.29 ± 0.17 (1,936) |
+
+## How many of my pieces can reach the enemy king zone within one move
+
+| Condition | Games | Storm rate | Storm result | No-storm result | Benefit of storming | Engine (storming) |
+|---|---|---|---|---|---|---|
+| 0 pieces | 36,061 | 33% | -1.0 ± 0.9 | -0.0 ± 0.6 | **-1.0 ± 1.0** | -0.09 ± 0.29 (618) |
+| 1 pieces | 185,278 | 30% | -0.8 ± 0.4 | +0.3 ± 0.3 | **-1.1 ± 0.5** | -0.28 ± 0.13 (2,964) |
+| 2 pieces | 261,848 | 27% | -1.5 ± 0.4 | +0.4 ± 0.2 | **-1.9 ± 0.4** | -0.26 ± 0.12 (3,708) |
+| 3 pieces | 131,269 | 24% | -1.4 ± 0.5 | +0.6 ± 0.3 | **-1.9 ± 0.6** | -0.29 ± 0.18 (1,700) |
+| 4+ pieces | 24,858 | 23% | -1.6 ± 1.2 | +1.2 ± 0.7 | **-2.8 ± 1.4** | -0.09 ± 0.46 (290) |
+
+## How many of their pieces can reach the defence of their king within one move
+
+| Condition | Games | Storm rate | Storm result | No-storm result | Benefit of storming | Engine (storming) |
+|---|---|---|---|---|---|---|
+| 3 pieces | 15,831 | 28% | +0.1 ± 1.4 | +1.9 ± 0.9 | **-1.8 ± 1.6** | -0.27 ± 0.48 (250) |
+| 4+ pieces | 622,405 | 27% | -1.3 ± 0.2 | +0.4 ± 0.1 | **-1.6 ± 0.3** | -0.25 ± 0.08 (9,006) |
+
+## Attackers minus defenders hitting the zone right now (the earlier, cruder measure), in four equal groups
+
+| Condition | Games | Storm rate | Storm result | No-storm result | Benefit of storming | Engine (storming) |
+|---|---|---|---|---|---|---|
+| 1 most defended (≤ -10) | 289,576 | 28% | -1.2 ± 0.3 | +0.3 ± 0.2 | **-1.5 ± 0.4** | -0.14 ± 0.11 (4,257) |
+| 2 (up to -8) | 163,207 | 27% | -1.3 ± 0.5 | +0.5 ± 0.3 | **-1.8 ± 0.5** | -0.30 ± 0.15 (2,269) |
+| 3 (up to -6) | 114,053 | 27% | -0.8 ± 0.5 | +0.7 ± 0.3 | **-1.6 ± 0.6** | -0.33 ± 0.19 (1,612) |
+| 4 most attacked (> -6) | 72,478 | 29% | -1.7 ± 0.6 | +0.3 ± 0.4 | **-2.0 ± 0.8** | -0.47 ± 0.23 (1,142) |
 
 ## The race: own pawn advance on the target wing minus their advance on my king's wing
 
@@ -77,11 +105,11 @@ Same side castling, locked centre, attackers at least level with defenders, and 
 
 | Group | Games | Storm rate | Benefit of storming |
 |---|---|---|---|
-| recipe holds | 146 | 47% | **+8.8 ± 15.3** |
-| recipe does not hold | 639,168 | 27% | **-1.6 ± 0.3** |
+| recipe holds | 644 | 51% | **+5.5 ± 7.2** |
+| recipe does not hold | 638,670 | 27% | **-1.7 ± 0.3** |
 
 ## Reading this honestly
 
 - Conditions are measured at move 12, but the storm is chosen over the next 13 moves, so "benefit" mixes the plan with the player who chose it. Stronger players pick plans better, which the rating adjustment only partly removes.
-- "Attackers" count pieces that attack a square next to the king right now, not pieces that could get there in two moves.
+- "Attackers" and "defenders" count knights, bishops, rooks and queens that hit the king zone now or after one move. At move 12 the defenders almost always include nearly every piece, so that side barely varies; the measure ignores pawn lines that a storm would open.
 - Margins are 95%. A benefit smaller than its margin is not a finding.

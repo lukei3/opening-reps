@@ -26,6 +26,7 @@ from ml_plans import label, wing_of  # noqa: E402
 from plan_stats import expected_white, score_white  # noqa: E402
 
 AT = 12
+EDGES = {}
 WEIGHT = {chess.QUEEN: 4, chess.ROOK: 2, chess.BISHOP: 2, chess.KNIGHT: 2}
 
 
@@ -46,19 +47,45 @@ def centre_state(board):
     return 'semi-open' if blocked == 1 else 'open'
 
 
+def attacks_from(ptype, sq, occ):
+    """Squares a piece of this type attacks from `sq` given the occupied squares (python-chess's own lookup tables)."""
+    if ptype == chess.KNIGHT:
+        return chess.BB_KNIGHT_ATTACKS[sq]
+    diag = chess.BB_DIAG_ATTACKS[sq][chess.BB_DIAG_MASKS[sq] & occ]
+    line = chess.BB_RANK_ATTACKS[sq][chess.BB_RANK_MASKS[sq] & occ] | chess.BB_FILE_ATTACKS[sq][chess.BB_FILE_MASKS[sq] & occ]
+    return diag if ptype == chess.BISHOP else line if ptype == chess.ROOK else diag | line
+
+
+def join_the_zone(board, zone_mask, color):
+    """For one side's knights, bishops, rooks and queen: which pieces hit the king zone now, and which could after one move.
+    Returns (now_weight, in2_weight, now_count, in2_count)."""
+    now_w = in2_w = now_n = in2_n = 0
+    own = board.occupied_co[color]
+    for ptype, w in WEIGHT.items():
+        for sq in board.pieces(ptype, color):
+            occ = board.occupied & ~chess.BB_SQUARES[sq]
+            if attacks_from(ptype, sq, occ) & zone_mask:
+                now_w += w; in2_w += w; now_n += 1; in2_n += 1
+                continue
+            moves = attacks_from(ptype, sq, occ) & ~own
+            hit = False
+            while moves and not hit:
+                d = (moves & -moves).bit_length() - 1
+                moves &= moves - 1
+                if attacks_from(ptype, d, occ) & zone_mask:
+                    hit = True
+            if hit:
+                in2_w += w; in2_n += 1
+    return now_w, in2_w, now_n, in2_n
+
+
 def conditions(board, snap, color, castle, target):
     me, en = ('w', 'b') if color == chess.WHITE else ('b', 'w')
     foe_king = board.king(not color)
-    zone = set(board.attacks(foe_king)) | {foe_king}
-    att = deff = 0
-    for sq, piece in board.piece_map().items():
-        if piece.piece_type in WEIGHT:
-            if not (set(board.attacks(sq)) & zone):
-                continue
-            if piece.color == color:
-                att += WEIGHT[piece.piece_type]
-            else:
-                deff += WEIGHT[piece.piece_type]
+    zone_mask = int(board.attacks(foe_king)) | chess.BB_SQUARES[foe_king]
+    a_now, a_in2, a_now_n, a_in2_n = join_the_zone(board, zone_mask, color)
+    d_now, d_in2, d_now_n, d_in2_n = join_the_zone(board, zone_mask, not color)
+    att, deff = a_now, d_now
     own_side = castle[me][0] if castle[me] else None
     race = None
     if own_side:
@@ -69,6 +96,7 @@ def conditions(board, snap, color, castle, target):
     return {
         'centre': centre_state(board),
         'att_def': att - deff, 'att': att, 'def': deff,
+        'net2': a_in2 - d_in2, 'att2_n': a_in2_n, 'def2_n': d_in2_n, 'net_now': a_now - d_now,
         'race': race,
         'shield': snap['shield_' + en],
         'storm_progress': snap['pawns_' + me][target][1],
@@ -136,9 +164,12 @@ class Acc:
 def bin_of(name, r):
     if name == 'centre':
         return r['centre']
-    if name == 'att_def':
-        d = r['att_def']
-        return '≤ -3' if d <= -3 else ('-2 to 0' if d <= 0 else ('1 to 2' if d <= 2 else ('3 to 5' if d <= 5 else '6 or more')))
+    if name in ('net2', 'net_now'):
+        d = r[name]
+        lo, mid, hi = EDGES[name]
+        return f'1 most defended (≤ {lo})' if d <= lo else (f'2 (up to {mid})' if d <= mid else (f'3 (up to {hi})' if d <= hi else f'4 most attacked (> {hi})'))
+    if name in ('att2_n', 'def2_n'):
+        return f'{min(r[name], 4)}{"+" if r[name] >= 4 else ""} pieces'
     if name == 'race':
         d = r['race']
         if d is None:
@@ -159,7 +190,10 @@ def bin_of(name, r):
 
 
 FEATURES = [('same_side', 'Kings on the same side or opposite'), ('centre', 'Centre at move 12'),
-            ('att_def', 'Attackers minus defenders around the enemy king (weighted: Q4, R2, B2, N2)'),
+            ('net2', 'Attackers minus defenders, counting pieces that can reach the king zone in one move (weights Q4, R2, B2, N2), in four equal groups'),
+            ('att2_n', 'How many of my pieces can reach the enemy king zone within one move'),
+            ('def2_n', 'How many of their pieces can reach the defence of their king within one move'),
+            ('net_now', 'Attackers minus defenders hitting the zone right now (the earlier, cruder measure), in four equal groups'),
             ('race', 'The race: own pawn advance on the target wing minus their advance on my king\'s wing'),
             ('shield', 'Enemy king\'s pawn shield (pawns in front of the king)'), ('storm_progress', 'How far my pawns have already advanced on the target wing'),
             ('fianchetto', 'Enemy fianchetto bishop'), ('queens', 'Queens on the board')]
@@ -190,6 +224,10 @@ def main():
             rows.extend(r)
     print(f'{len(rows):,} side-positions (both castled by move {AT}, game reaches move 25)')
     storm_rate = sum(r['storm'] for r in rows) / len(rows)
+    for key in ('net2', 'net_now'):
+        vals = sorted(r[key] for r in rows)
+        EDGES[key] = [vals[len(vals) * q // 4] for q in (1, 2, 3)]
+    print('group edges:', EDGES)
 
     md = ['# When does a pawn storm work? (King\'s Indian, both kings castled by move 12)\n',
           f'{len(rows):,} side-positions from real games. The side "stormed" if, from move 13 to 25, it made more pawn moves on the wing where the enemy king castled than anywhere else, and at least two. Overall {storm_rate * 100:.0f}% did.\n',
@@ -223,7 +261,7 @@ def main():
     md += ['## The textbook recipe together\n', 'Same side castling, locked centre, attackers at least level with defenders, and not behind in the race.\n',
            '| Group | Games | Storm rate | Benefit of storming |', '|---|---|---|---|']
     def recipe(r):
-        return r['same_side'] and r['centre'] == 'locked' and r['att_def'] >= 0 and (r['race'] is None or r['race'] >= -2)
+        return r['same_side'] and r['centre'] == 'locked' and r['net2'] >= 0 and (r['race'] is None or r['race'] >= -2)
     for title, cond in (('recipe holds', recipe), ('recipe does not hold', lambda r: not recipe(r))):
         s, n = Acc(), Acc()
         for r in rows:
@@ -234,7 +272,7 @@ def main():
             md.append(f'| {title} | {s.n + n.n:,} | {100 * s.n / (s.n + n.n):.0f}% | **{100 * diff:+.1f} ± {100 * ci:.1f}** |')
     md += ['', '## Reading this honestly\n',
            '- Conditions are measured at move 12, but the storm is chosen over the next 13 moves, so "benefit" mixes the plan with the player who chose it. Stronger players pick plans better, which the rating adjustment only partly removes.',
-           '- "Attackers" count pieces that attack a square next to the king right now, not pieces that could get there in two moves.',
+           '- "Attackers" and "defenders" count knights, bishops, rooks and queens that hit the king zone now or after one move. At move 12 the defenders almost always include nearly every piece, so that side barely varies; the measure ignores pawn lines that a storm would open.',
            '- Margins are 95%. A benefit smaller than its margin is not a finding.', '']
     with open(a.out, 'w', encoding='utf-8') as f:
         f.write('\n'.join(md))
