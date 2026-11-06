@@ -16,7 +16,7 @@
     <button data-tab="train" class="on">Train</button>
     <button data-tab="drills">Drills</button>
     <button data-tab="studies">Studies</button>
-    <button data-tab="plans">Plans</button>
+    <button data-tab="plans">Themes</button>
 <button data-tab="progress">Progress</button>
     <button data-tab="settings" id="devtab" hidden>Developer</button>
   </nav>
@@ -243,7 +243,19 @@
 
   <!-- PROGRESS -->
   <section id="tab-plans" hidden>
-    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip" data-mode="adv" hidden>Plan advisor</button><button type="button" class="chip" data-mode="drill" hidden>Plan drill</button><button type="button" class="chip on" data-mode="stats">What players do</button></div></div>
+    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip" data-mode="adv" hidden>Plan advisor</button><button type="button" class="chip" data-mode="drill" hidden>Plan drill</button><button type="button" class="chip on" data-mode="themes">Themes</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
+    <div class="pl-wrap" id="plThemesPane">
+      <div class="sthead"><h2>Opening themes</h2><p class="muted small">What each King's Indian structure is about: the ideas that keep coming up in real games, and the mistakes. Pick a structure, then tap an idea to see where it happens on the board.</p></div>
+      <div id="thPicker" class="chips"></div>
+      <div id="thSide" class="chips"></div>
+      <div class="ad-grid">
+        <div>
+          <h3 id="thTitle" class="th-h"></h3><p class="muted small" id="thCount"></p>
+          <div class="board-wrap"><div id="thBoard"></div></div>
+        </div>
+        <div id="thBody"></div>
+      </div>
+    </div>
     <div class="pl-wrap" id="plDrillPane" hidden>
       <div class="sthead"><h2>Plan drill</h2><p class="muted small">A real position from a real King's Indian game. Decide which plans it supports, then see what the research says and why.</p></div>
       <div class="tally" id="dpTally"></div>
