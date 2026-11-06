@@ -1,0 +1,347 @@
+{
+ "name": "kid",
+ "games": 391982,
+ "at_move": 12,
+ "until_move": 25,
+ "castling": [
+  {
+   "white": "K",
+   "black": "K",
+   "n": 239060,
+   "score": 0.513,
+   "vs_expected": 0.012,
+   "ci": 0.002
+  },
+  {
+   "white": "not yet",
+   "black": "K",
+   "n": 118399,
+   "score": 0.499,
+   "vs_expected": -0.001,
+   "ci": 0.003
+  },
+  {
+   "white": "Q",
+   "black": "K",
+   "n": 17710,
+   "score": 0.516,
+   "vs_expected": 0.011,
+   "ci": 0.007
+  },
+  {
+   "white": "not yet",
+   "black": "not yet",
+   "n": 9852,
+   "score": 0.508,
+   "vs_expected": 0.004,
+   "ci": 0.009
+  },
+  {
+   "white": "K",
+   "black": "not yet",
+   "n": 4564,
+   "score": 0.538,
+   "vs_expected": 0.025,
+   "ci": 0.014
+  },
+  {
+   "white": "Q",
+   "black": "not yet",
+   "n": 1662,
+   "score": 0.513,
+   "vs_expected": 0.001,
+   "ci": 0.023
+  }
+ ],
+ "plans_w": {
+  "attack on their king": {
+   "n": 104219,
+   "score": 0.489,
+   "vs_expected": -0.01,
+   "ci": 0.003
+  },
+  "play on the other wing": {
+   "n": 105098,
+   "score": 0.52,
+   "vs_expected": 0.017,
+   "ci": 0.003
+  },
+  "central play": {
+   "n": 26447,
+   "score": 0.552,
+   "vs_expected": 0.046,
+   "ci": 0.006
+  },
+  "quiet": {
+   "n": 156218,
+   "score": 0.507,
+   "vs_expected": 0.008,
+   "ci": 0.002
+  }
+ },
+ "plans_b": {
+  "attack on their king": {
+   "n": 71325,
+   "score": 0.483,
+   "vs_expected": -0.016,
+   "ci": 0.004
+  },
+  "play on the other wing": {
+   "n": 69439,
+   "score": 0.48,
+   "vs_expected": -0.019,
+   "ci": 0.004
+  },
+  "central play": {
+   "n": 33338,
+   "score": 0.504,
+   "vs_expected": 0.004,
+   "ci": 0.005
+  },
+  "quiet": {
+   "n": 217880,
+   "score": 0.495,
+   "vs_expected": -0.004,
+   "ci": 0.002
+  }
+ },
+ "structures": [
+  {
+   "centre_key": "w:d3e2|b:d1e2",
+   "description": "White d5 + e4; Black d6 + e5",
+   "n": 87015,
+   "score": 0.52,
+   "vs_expected": 0.015,
+   "ci": 0.003
+  },
+  {
+   "centre_key": "w:d3e2|b:d1e0",
+   "description": "White d5 + e4; Black d6 + e7",
+   "n": 29666,
+   "score": 0.507,
+   "vs_expected": 0.004,
+   "ci": 0.005
+  },
+  {
+   "centre_key": "w:d-e2|b:d1e-",
+   "description": "White d pawn gone + e4; Black d6 + e pawn gone",
+   "n": 16919,
+   "score": 0.518,
+   "vs_expected": 0.009,
+   "ci": 0.007
+  },
+  {
+   "centre_key": "w:d-e2|b:d-e2",
+   "description": "White d pawn gone + e4; Black d pawn gone + e5",
+   "n": 15825,
+   "score": 0.497,
+   "vs_expected": 0.002,
+   "ci": 0.007
+  },
+  {
+   "centre_key": "w:d3e2|b:d1e-",
+   "description": "White d5 + e4; Black d6 + e pawn gone",
+   "n": 13151,
+   "score": 0.491,
+   "vs_expected": -0.003,
+   "ci": 0.008
+  },
+  {
+   "centre_key": "w:d3e2|b:d-e2",
+   "description": "White d5 + e4; Black d pawn gone + e5",
+   "n": 10165,
+   "score": 0.544,
+   "vs_expected": 0.034,
+   "ci": 0.009
+  },
+  {
+   "centre_key": "w:d-e2|b:d1e0",
+   "description": "White d pawn gone + e4; Black d6 + e7",
+   "n": 9930,
+   "score": 0.507,
+   "vs_expected": 0.004,
+   "ci": 0.009
+  },
+  {
+   "centre_key": "w:d2e2|b:d1e0",
+   "description": "White d4 + e4; Black d6 + e7",
+   "n": 9596,
+   "score": 0.524,
+   "vs_expected": 0.013,
+   "ci": 0.01
+  }
+ ],
+ "cards": [
+  {
+   "centre_key": "w:d3e2|b:d1e2",
+   "description": "White d5 + e4; Black d6 + e5",
+   "games": 87015,
+   "white": {
+    "attack on their king": {
+     "n": 28974,
+     "score": 0.501,
+     "vs_expected": -0.001,
+     "ci": 0.006
+    },
+    "play on the other wing": {
+     "n": 30518,
+     "score": 0.543,
+     "vs_expected": 0.033,
+     "ci": 0.005
+    },
+    "central play": {
+     "n": 2090,
+     "score": 0.57,
+     "vs_expected": 0.063,
+     "ci": 0.02
+    },
+    "quiet": {
+     "n": 25433,
+     "score": 0.51,
+     "vs_expected": 0.007,
+     "ci": 0.006
+    }
+   },
+   "black": {
+    "attack on their king": {
+     "n": 27097,
+     "score": 0.496,
+     "vs_expected": -0.003,
+     "ci": 0.006
+    },
+    "play on the other wing": {
+     "n": 12809,
+     "score": 0.454,
+     "vs_expected": -0.04,
+     "ci": 0.008
+    },
+    "central play": {
+     "n": 2028,
+     "score": 0.523,
+     "vs_expected": 0.018,
+     "ci": 0.021
+    },
+    "quiet": {
+     "n": 45081,
+     "score": 0.476,
+     "vs_expected": -0.017,
+     "ci": 0.004
+    }
+   }
+  },
+  {
+   "centre_key": "w:d3e2|b:d1e0",
+   "description": "White d5 + e4; Black d6 + e7",
+   "games": 29666,
+   "white": {
+    "attack on their king": {
+     "n": 9804,
+     "score": 0.507,
+     "vs_expected": 0.003,
+     "ci": 0.01
+    },
+    "play on the other wing": {
+     "n": 6944,
+     "score": 0.499,
+     "vs_expected": -0.004,
+     "ci": 0.011
+    },
+    "central play": {
+     "n": 2758,
+     "score": 0.554,
+     "vs_expected": 0.046,
+     "ci": 0.018
+    },
+    "quiet": {
+     "n": 10160,
+     "score": 0.501,
+     "vs_expected": -0.001,
+     "ci": 0.009
+    }
+   },
+   "black": {
+    "attack on their king": {
+     "n": 3530,
+     "score": 0.472,
+     "vs_expected": -0.021,
+     "ci": 0.016
+    },
+    "play on the other wing": {
+     "n": 5701,
+     "score": 0.512,
+     "vs_expected": 0.011,
+     "ci": 0.012
+    },
+    "central play": {
+     "n": 4405,
+     "score": 0.464,
+     "vs_expected": -0.027,
+     "ci": 0.014
+    },
+    "quiet": {
+     "n": 16030,
+     "score": 0.498,
+     "vs_expected": 0.001,
+     "ci": 0.007
+    }
+   }
+  },
+  {
+   "centre_key": "w:d-e2|b:d1e-",
+   "description": "White d pawn gone + e4; Black d6 + e pawn gone",
+   "games": 16919,
+   "white": {
+    "attack on their king": {
+     "n": 5331,
+     "score": 0.512,
+     "vs_expected": 0.004,
+     "ci": 0.013
+    },
+    "play on the other wing": {
+     "n": 4084,
+     "score": 0.52,
+     "vs_expected": 0.008,
+     "ci": 0.014
+    },
+    "central play": {
+     "n": 454,
+     "score": 0.585,
+     "vs_expected": 0.065,
+     "ci": 0.043
+    },
+    "quiet": {
+     "n": 7050,
+     "score": 0.517,
+     "vs_expected": 0.01,
+     "ci": 0.011
+    }
+   },
+   "black": {
+    "attack on their king": {
+     "n": 3076,
+     "score": 0.454,
+     "vs_expected": -0.035,
+     "ci": 0.017
+    },
+    "play on the other wing": {
+     "n": 4244,
+     "score": 0.472,
+     "vs_expected": -0.017,
+     "ci": 0.014
+    },
+    "central play": {
+     "n": 587,
+     "score": 0.553,
+     "vs_expected": 0.054,
+     "ci": 0.039
+    },
+    "quiet": {
+     "n": 9012,
+     "score": 0.492,
+     "vs_expected": -0.001,
+     "ci": 0.01
+    }
+   }
+  }
+ ]
+}
