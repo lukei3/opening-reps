@@ -3,7 +3,8 @@
 
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
-import { showAdvisor } from './advisor.js';
+import { showAdvisor, openFen } from './advisor.js';
+import { showDrill } from './plandrill.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -105,11 +106,13 @@ export function showPlans() {
   if (!modeWired) {
     modeWired = true;
     $('plMode').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (b) { mode = b.dataset.mode; showPlans(); } });
+    document.addEventListener('plans:advisor', (e) => { mode = 'adv'; showPlans(); openFen(e.detail.fen, e.detail.me); });
   }
   document.querySelectorAll('#plMode .chip').forEach((b) => b.classList.toggle('on', b.dataset.mode === mode));
   $('plAdvPane').hidden = mode !== 'adv';
+  $('plDrillPane').hidden = mode !== 'drill';
   $('plStatsPane').hidden = mode !== 'stats';
-  if (mode === 'adv') showAdvisor(); else showStats();
+  if (mode === 'adv') showAdvisor(); else if (mode === 'drill') showDrill(); else showStats();
 }
 
 async function showStats() {

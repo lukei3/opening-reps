@@ -318,6 +318,12 @@ async function analysePosition(fen, me) {
     ${ls.map((l) => `<div class="small"><b>${esc(l.first)}</b> <span class="muted">${fmt(l.cp)}</span> <span class="muted">${esc(l.sans)}</span></div>`).join('')}</div>`).join('');
 }
 
+export async function openFen(fen, me) {
+  await showAdvisor();
+  $('adPos').value = 'fen'; $('adFenRow').hidden = false; $('adFen').value = fen; $('adMe').value = me;
+  analysePosition(fen, me);
+}
+
 export async function showAdvisor() {
   if (!ready) {
     ready = true;

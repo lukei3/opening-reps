@@ -243,7 +243,25 @@
 
   <!-- PROGRESS -->
   <section id="tab-plans" hidden>
-    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip on" data-mode="adv">Plan advisor</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
+    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip on" data-mode="adv">Plan advisor</button><button type="button" class="chip" data-mode="drill">Plan drill</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
+    <div class="pl-wrap" id="plDrillPane" hidden>
+      <div class="sthead"><h2>Plan drill</h2><p class="muted small">A real position from a real King's Indian game. Decide which plans it supports, then see what the research says and why.</p></div>
+      <div class="tally" id="dpTally"></div>
+      <div class="ad-grid">
+        <div><div class="board-wrap"><div id="dpBoard"></div></div></div>
+        <div>
+          <h3 id="dpPrompt" class="ad-h" style="margin-top:0"></h3>
+          <div id="dpChoices" class="chips dp-choices"></div>
+          <div class="ad-ctl"><button id="dpCheck" type="button" class="primary">Check my answer</button></div>
+          <div id="dpResult" hidden></div>
+          <div id="dpAfter" class="ad-ctl" hidden>
+            <button id="dpNext" type="button" class="primary">Next position</button>
+            <button id="dpAdvisor" type="button" class="ghost">Open in the advisor</button>
+            <a id="dpGame" class="ghost dp-link" target="_blank" rel="noopener noreferrer">See the real game</a>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="pl-wrap" id="plAdvPane">
       <div class="sthead"><h2>Plan advisor</h2><p class="muted small">Pick a position, and the advisor reads what matters in it (the pawn race, weak pawns, outposts, open files, bishops, mobility) and says which plans the real games support, and which they warn against. The rules come from 480,000 King's Indian games.</p></div>
       <div class="ad-ctl">
