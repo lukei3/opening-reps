@@ -224,8 +224,7 @@ export function plans(c) {
   // 6. bishops and mobility
   if (c.bishopPair === 1) add({ id: 'bishops', status: 'good', title: 'Keep the bishop pair', why: ['You have both bishops and they do not. That was worth +2.3 points; open the position for them.'], shapes: null });
   else if (c.bishopPair === -1) add({ id: 'bishops', status: 'maybe', title: 'Neutralise their bishop pair', why: ['They have both bishops and you do not (−2.3 for you). Trade one of their bishops or keep the position closed.'], shapes: null });
-  const mobStatus = c.mobility >= 5 ? 'good' : c.mobility <= -5 ? 'maybe' : 'na';
-  if (mobStatus !== 'na') add({ id: 'mobility', status: mobStatus, title: mobStatus === 'good' ? 'Keep your pieces active' : 'Free your pieces', why: [mobStatus === 'good' ? `Your pieces have ${c.mobility} more safe squares than theirs. The most mobile quarter scored +3.5 above the least mobile; keep lines open.` : `Their pieces have ${-c.mobility} more safe squares than yours. Improve your worst-placed piece before anything committal; mobility was the strongest single factor in the data (+1.4 per standard deviation).`], shapes: null });
+  // Piece activity is not a plan (you always want it), so it is reported as context, not offered as an answer.
 
   // 7. race lost: counterplay
   if (c.race !== null && c.race <= -3) add({ id: 'counter', status: 'good', title: 'Counterplay on the other wing or in the centre', why: ['They lead the race against your king. Respond on the wing where you can start your own play, or in the centre; central play was the plan the engine liked best in the data (+0.38 pawns on average), yet it is rarely tried.'], shapes: null });
@@ -303,7 +302,8 @@ async function analysePosition(fen, me) {
   drawBoard(fen, me);
   renderMenu(current.list);
   showShapes(current.list.find((p) => p.shapes && p.status !== 'na'));
-  $('adStatus').textContent = 'Tap a plan to see it on the board.';
+  const act = c.mobility >= 5 ? `Piece activity: your pieces have ${c.mobility} more safe squares than theirs.` : c.mobility <= -5 ? `Piece activity: their pieces have ${-c.mobility} more safe squares than yours, so any plan has to start by freeing yours.` : 'Piece activity is about level.';
+  $('adStatus').textContent = `${act} Tap a plan to see it on the board.`;
   $('adIdeas').innerHTML = '<p class="muted small">The engine is looking at the six best moves ...</p>';
   const res = await analyse(fen, 16, 6, 1);
   if (id !== runId) return;

@@ -906,3 +906,5 @@ table.ana th:nth-child(2) { text-align: center; }
 .dp-mark { font-weight: 700; font-size: 13px; }
 .dp-mark.ok { color: var(--good); } .dp-mark.missed, .dp-mark.bad { color: var(--bad); } .dp-mark.neutral { color: var(--muted); }
 .dp-link { padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; text-decoration: none; color: var(--text); display: inline-block; }
+.dp-text { width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; resize: vertical; }
+.dp-read { min-height: 1.4em; margin: 6px 0 0; }
