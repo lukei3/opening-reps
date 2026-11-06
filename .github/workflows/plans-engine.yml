@@ -1,0 +1,38 @@
+# Plans lab step 5 (see lab/plans/README.md): Stockfish evaluations at move 12 and move 25 for the sample of games in
+# lab/plans/data. 8 shards run side by side. Nothing in the app uses this.
+name: "Plans lab: engine check"
+
+on:
+  workflow_dispatch:
+    inputs:
+      depth:
+        description: 'Search depth'
+        default: '12'
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install chess
+      - run: sudo apt-get update && sudo apt-get install -y stockfish
+      - name: Evaluate
+        env:
+          DEPTH: ${{ inputs.depth }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python tools/plans/engine_check.py lab/plans/data/kid-sample.jsonl.gz \
+            --out "evals-${SHARD}.jsonl" --shard "${SHARD}" --shards 8 --depth "${DEPTH}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plans-evals-${{ matrix.shard }}
+          path: evals-${{ matrix.shard }}.jsonl
+          retention-days: 30
