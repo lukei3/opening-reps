@@ -22,7 +22,11 @@ starts again from the raw monthly Lichess files and keeps full games for chosen 
 - Step 3 is built: `tools/plans/plan_stats.py` groups games by structure, labels each side's plan, and compares results
   with what the ratings predict. `out/kid-sample-report.md` is the result on a 2,544-game test sample; the margins are
   wide, so read it as a check that the pipeline works, not as findings.
-- Next: run steps 2 and 3 on the full set of King's Indian games (about half a million) once the cloud pull finishes.
+- Steps 2 and 3 have run on 480,000 King's Indian games: `out/kid-report.md`.
+- Step 4 is built: `tools/plans/ml_plans.py` makes a 109-feature table per side at move 12 and tests whether a model
+  predicts "pushes pawns against the enemy king over moves 13 to 25" better than castling alone or castling plus recent
+  pawn moves. Result: `out/kid-model.md` (AUC 0.71 for the full table, 0.61 for momentum, 0.58 for castling only).
+- Next: step 5, the engine check.
 
 Run order, for the record:
 
