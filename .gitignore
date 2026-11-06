@@ -9,3 +9,6 @@ __pycache__/
 *.pyc
 *.log
 .claude/
+
+lab/plans/demo/cases.json
+lab/plans/demo/labels.jsonl

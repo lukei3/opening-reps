@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plans quiz (private)</title>
+<base href="/">
+<link rel="stylesheet" href="style.css">
+<style>
+  body { padding: 16px; }
+  .q { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: minmax(280px, 480px) 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 820px) { .q { grid-template-columns: 1fr; } }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+  .row button { flex: 1 1 auto; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; cursor: pointer; }
+  .row button.primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .row button:disabled { opacity: .4; cursor: default; }
+  .tally { display: flex; gap: 18px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .tally b { font-size: 20px; display: block; }
+  .ok { color: var(--good); } .no { color: var(--bad); }
+  #why { line-height: 1.5; }
+  .banner { padding: 8px 12px; border-radius: 8px; background: var(--panel2); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="q">
+  <div>
+    <div class="banner">Private test tool. Runs only on this computer and is never published.</div>
+    <h2 id="head" style="margin:12px 0 4px"></h2>
+    <p class="muted small" id="sub"></p>
+    <div class="board-wrap"><div id="board"></div></div>
+    <div class="row" id="nav" hidden>
+      <button id="first">⏮</button><button id="prev">◀</button><button id="next">▶</button><button id="last">⏭</button>
+    </div>
+    <p class="muted small" id="moves"></p>
+  </div>
+  <div class="card">
+    <div class="tally" id="tally"></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+    <h3 id="ask" style="margin:0 0 6px"></h3>
+    <p class="muted small" id="def">"Pushing pawns at the king" means: from move 13 to move 25 this side makes more pawn moves on the wing where the other king castled than anywhere else, and at least two of them.</p>
+    <div class="row" id="guess">
+      <button id="yes" class="primary">Yes, it attacks the king</button><button id="no">No, it does something else</button>
+    </div>
+    <div id="result" hidden>
+      <p id="why"></p>
+      <label class="small"><input type="checkbox" id="wrong"> The label is wrong: the game shows something different</label>
+      <input id="note" type="text" placeholder="Optional note (saved with your verdict)" style="width:100%;margin:8px 0;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text)">
+      <div class="row"><button id="again" class="primary">Next position</button></div>
+    </div>
+  </div>
+</div>
+<script type="module">
+import { Chess } from './lib/chess.js';
+import { Board } from './js/board.js';
+
+const $ = (id) => document.getElementById(id);
+const KEY = 'plansquiz.v1';
+let cases = [], i = 0, ply = 24, g = null, answered = false;
+const tally = JSON.parse(localStorage.getItem(KEY) || '{"n":0,"you":0,"model":0,"no":0}');
+const save = () => localStorage.setItem(KEY, JSON.stringify(tally));
+
+const board = new Board($('board'), { getTargets: () => [], onMove: () => {} });
+board.setEnabled(false);
+
+const pieceMap = (c) => { const m = {}; for (const r of c.board()) for (const p of r) if (p) m[p.square] = p.color + p.type.toUpperCase(); return m; };
+const WING = { K: 'kingside', Q: 'queenside' };
+
+function draw() {
+  const c = cases[i], chess = new Chess();
+  let last = null;
+  for (let k = 0; k < ply; k++) { const m = chess.move(c.moves[k]); last = [m.from, m.to]; }
+  board.set({ pieces: pieceMap(chess), orientation: c.side, lastMove: last });
+  const mv = c.moves.slice(0, ply).map((m, k) => (k % 2 === 0 ? `${k / 2 + 1}. ` : '') + m).join(' ');
+  $('moves').textContent = answered ? mv : 'Moves so far are hidden until you answer. Look at the position.';
+  if (!answered) $('moves').textContent = 'Position after move 12.';
+}
+
+function renderTally() {
+  const n = tally.n || 1;
+  $('tally').innerHTML = `<div><b>${tally.n}</b>answered</div><div><b>${Math.round(100 * tally.you / n)}%</b>you</div><div><b>${Math.round(100 * tally.model / n)}%</b>model</div><div><b>${Math.round(100 * tally.no / n)}%</b>always "no"</div>`;
+}
+
+function show() {
+  const c = cases[i]; answered = false; ply = 24;
+  const me = c.side === 'w' ? 'White' : 'Black', foe = c.side === 'w' ? 'Black' : 'White';
+  $('head').textContent = `Position ${i + 1} of ${cases.length}: ${me} to plan`;
+  $('sub').textContent = `${c.white} vs ${c.black}, ${c.speed}. ${foe}'s king is castled ${WING[c.target]}; ${me}'s is ${WING[c.own_castle] || 'not castled'}.`;
+  $('ask').textContent = `Will ${me} push pawns at ${foe}'s king over moves 13 to 25?`;
+  $('guess').hidden = false; $('result').hidden = true; $('nav').hidden = true;
+  $('wrong').checked = false; $('note').value = '';
+  draw(); renderTally();
+}
+
+function answer(yes) {
+  const c = cases[i]; answered = true;
+  const youRight = yes === !!c.actual, modelSaysYes = c.model >= 0.5, modelRight = modelSaysYes === !!c.actual;
+  tally.n++; tally.you += youRight; tally.model += modelRight; tally.no += !c.actual; save();
+  const me = c.side === 'w' ? 'White' : 'Black';
+  const per = Object.entries(c.counts).map(([w, n]) => `${n} ${w === 'K' ? 'kingside' : w === 'Q' ? 'queenside' : 'centre'}`).join(', ');
+  $('why').innerHTML = `You said <b>${yes ? 'yes' : 'no'}</b> <span class="${youRight ? 'ok' : 'no'}">${youRight ? '✓' : '✗'}</span>. The model said <b>${Math.round(c.model * 100)}%</b> likely, so <b>${modelSaysYes ? 'yes' : 'no'}</b> <span class="${modelRight ? 'ok' : 'no'}">${modelRight ? '✓' : '✗'}</span>.<br>
+    What happened: <b>${c.actual ? 'yes' : 'no'}</b>. Label: <i>${c.plan}</i> (pawn moves, moves 13 to 25: ${per}). Use the buttons under the board to step through the real game from move 12 to 25.`;
+  $('guess').hidden = true; $('result').hidden = false; $('nav').hidden = false;
+  ply = 24; draw(); renderTally();
+}
+
+async function next() {
+  const c = cases[i];
+  try { await fetch('/api/label', { method: 'POST', body: JSON.stringify({ id: c.id, side: c.side, model: c.model, actual: c.actual, plan: c.plan, wrong: $('wrong').checked, note: $('note').value, at: new Date().toISOString() }) }); } catch (e) { /* private tool: ignore */ }
+  i = (i + 1) % cases.length; show();
+}
+
+const go = (p) => { ply = Math.max(24, Math.min(50, p)); draw(); };
+$('yes').onclick = () => answer(true); $('no').onclick = () => answer(false);
+$('again').onclick = next;
+$('first').onclick = () => go(24); $('prev').onclick = () => go(ply - 1); $('next').onclick = () => go(ply + 1); $('last').onclick = () => go(50);
+document.addEventListener('keydown', (e) => { if (!answered) return; if (e.key === 'ArrowRight') go(ply + 1); if (e.key === 'ArrowLeft') go(ply - 1); });
+
+fetch('lab/plans/demo/cases.json').then((r) => r.json()).then((d) => { cases = d; show(); }).catch(() => { $('head').textContent = 'cases.json is missing: run build_cases.py first.'; });
+</script>
+</body>
+</html>
