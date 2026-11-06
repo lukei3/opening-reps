@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan finder (private)</title>
+<base href="/">
+<link rel="stylesheet" href="style.css">
+<style>
+  body { padding: 16px; }
+  .f { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 820px) { .f { grid-template-columns: 1fr; } }
+  .banner { padding: 8px 12px; border-radius: 8px; background: var(--panel2); font-size: 13px; margin-bottom: 12px; }
+  .ctl { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+  .ctl select, .ctl input, .ctl button { padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
+  .ctl button.primary { background: var(--accent); color: #fff; border-color: transparent; cursor: pointer; }
+  .idea { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; cursor: pointer; }
+  .idea.on { border-color: var(--accent); background: rgba(255,255,255,.05); }
+  .idea h3 { margin: 0; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  .mv { font-variant-numeric: tabular-nums; }
+  .pv { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .judge { display: flex; gap: 8px; }
+  .judge button { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+  .judge button.sel { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="f">
+  <div>
+    <div class="banner">Private test tool. Runs only on this computer and is never published.</div>
+    <div class="ctl">
+      <select id="pos"></select>
+      <select id="me"><option value="b">I am Black</option><option value="w">I am White</option></select>
+    </div>
+    <div class="ctl"><input id="fen" placeholder="or paste a FEN" style="flex:1 1 220px"><button id="useFen">Use FEN</button></div>
+    <div class="board-wrap"><div id="board"></div></div>
+    <p class="muted small" id="status"></p>
+  </div>
+  <div>
+    <h2 style="margin:0 0 4px">What is each good move for?</h2>
+    <p class="muted small">The engine's best lines are grouped by the idea they pursue. Moves in the same group serve the same plan. Tell me whether each plan sounds right.</p>
+    <div id="humans" class="card" hidden></div>
+    <div id="ideas"></div>
+  </div>
+</div>
+<script type="module">
+import { Chess } from './lib/chess.js';
+import { Board } from './js/board.js';
+import { analyse } from './js/engine.js';
+
+const $ = (id) => document.getElementById(id);
+const COLORS = ['#2f9e6b', '#d9822b', '#4f8ff7', '#c25bd6', '#d6c043', '#e0645c'];
+const VAL = { p: 100, n: 300, b: 300, r: 500, q: 900, k: 0 };
+const board = new Board($('board'), { getTargets: () => [], onMove: () => {} });
+board.setEnabled(false);
+let data = null, ideas = [], cur = null, sel = -1, runId = 0;
+
+const pieceMap = (c) => { const m = {}; for (const r of c.board()) for (const p of r) if (p) m[p.square] = p.color + p.type.toUpperCase(); return m; };
+const wingOf = (file) => (file <= 2 ? 'Q' : file <= 4 ? 'C' : 'K');
+const wingName = { Q: 'queenside', C: 'centre', K: 'kingside' };
+const fileOf = (sq) => sq.charCodeAt(0) - 97;
+const rankOf = (sq) => +sq[1];
+const material = (c, colour) => { let s = 0; for (const r of c.board()) for (const p of r) if (p && p.color === colour) s += VAL[p.type]; return s; };
+
+/** Read one engine line from the mover's point of view: what does it do with pawns, pieces and trades? */
+function describe(fen, pv, me) {
+  const c = new Chess(fen), foe = me === 'w' ? 'b' : 'w';
+  let foeKing = null;
+  for (const r of c.board()) for (const p of r) if (p && p.type === 'k' && p.color === foe) foeKing = p.square;
+  const kWing = wingOf(fileOf(foeKing));
+  const m0 = material(c, me) - material(c, foe);
+  const d = { kingWing: kWing, pawnKW: 0, pawnOther: {}, centre: 0, near: 0, caps: 0, pieces: [], sans: [] };
+  const moves = pv.slice(0, pv.length % 2 === 0 ? pv.length : pv.length - 1 || 1).slice(0, 12);
+  for (const u of moves) {
+    const mv = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: u[4] });
+    if (!mv) break;
+    d.sans.push(mv.san);
+    if (mv.captured) d.caps++;
+    if (mv.color !== me) continue;
+    if (mv.piece === 'p') {
+      const w = wingOf(fileOf(mv.to));
+      if (w === kWing && w !== 'C') d.pawnKW++; else if (w === 'C') d.centre++;
+      if (w !== kWing && w !== 'C') d.pawnOther[w] = (d.pawnOther[w] || 0) + 1;
+    } else if (mv.piece !== 'k') {
+      d.pieces.push(mv.piece.toUpperCase() + mv.to);
+      if (Math.max(Math.abs(fileOf(mv.to) - fileOf(foeKing)), Math.abs(rankOf(mv.to) - rankOf(foeKing))) <= 2) d.near++;
+    }
+  }
+  d.gain = (material(c, me) - material(c, foe)) - m0;
+  return d;
+}
+
+function tagOf(d) {
+  if (d.gain >= 100) return { key: 'material', title: 'Win material or a tactic' };
+  if (d.pawnKW >= 2 || d.near >= 2) return { key: 'king', title: "Attack the enemy king" };
+  const other = Object.entries(d.pawnOther).sort((a, b) => b[1] - a[1])[0];
+  if (other && other[1] >= 2) return { key: 'wing' + other[0], title: `Expand on the ${wingName[other[0]]}` };
+  if (d.centre >= 2) return { key: 'centre', title: 'Open or strengthen the centre' };
+  if (d.caps >= 3) return { key: 'trade', title: 'Trade pieces and simplify' };
+  return { key: 'pieces', title: 'Improve the pieces' };
+}
+
+const fmt = (cp) => `${cp >= 0 ? '+' : '−'}${Math.abs(cp / 100).toFixed(2)}`;
+
+function render() {
+  const el = $('ideas'); el.innerHTML = '';
+  ideas.forEach((idea, k) => {
+    const div = document.createElement('div');
+    div.className = 'idea' + (k === sel ? ' on' : '');
+    const lines = idea.lines.map((l) => `<div class="mv"><b>${l.first}</b> <span class="muted">${fmt(l.cp)}</span> &nbsp; <span class="pv">${l.sans}</span></div>`).join('');
+    const pcs = [...new Set(idea.lines.flatMap((l) => l.d.pieces))].slice(0, 6).join(', ');
+    div.innerHTML = `<h3><span><span class="dot" style="background:${COLORS[k % COLORS.length]}"></span>${idea.title}</span><span class="muted small">${idea.lines.length} of ${cur.total} lines</span></h3>${lines}
+      ${pcs ? `<div class="pv">Pieces head for: ${pcs}</div>` : ''}
+      <div class="judge"><span class="muted small">Is this a good plan here?</span><button data-v="good">Yes</button><button data-v="meh">Not really</button></div>`;
+    div.addEventListener('click', (e) => {
+      if (e.target.dataset.v) {
+        div.querySelectorAll('.judge button').forEach((b) => b.classList.toggle('sel', b === e.target));
+        fetch('/api/label', { method: 'POST', body: JSON.stringify({ kind: 'plan-judgement', fen: cur.fen, me: cur.me, idea: idea.title, moves: idea.lines.map((l) => l.first), verdict: e.target.dataset.v, at: new Date().toISOString() }) }).catch(() => {});
+        return;
+      }
+      sel = k; drawArrows(); render();
+    });
+    el.appendChild(div);
+  });
+}
+
+function drawArrows() {
+  const arrows = [];
+  ideas.forEach((idea, k) => {
+    if (sel >= 0 && k !== sel) return;
+    idea.lines.forEach((l) => arrows.push({ from: l.uci.slice(0, 2), to: l.uci.slice(2, 4), color: COLORS[k % COLORS.length], opacity: 0.85, width: 0.16 }));
+  });
+  board.setShapes({ arrows, circles: [] });
+}
+
+async function run(fen, me) {
+  const id = ++runId;
+  const parts = fen.split(' ');
+  if (parts[1] !== me) { parts[1] = me; parts[3] = '-'; }          // "if it were my move": hand the move to the side the plan is for
+  fen = parts.join(' ');
+  const c = new Chess(fen);
+  board.set({ pieces: pieceMap(c), orientation: me, lastMove: null });
+  board.setShapes({ arrows: [], circles: [] });
+  $('status').textContent = 'The engine is thinking (six best lines, depth 16) ...';
+  $('ideas').innerHTML = '';
+  const res = await analyse(fen, 16, 6, 1);
+  if (id !== runId) return;
+  const sign = me === 'w' ? 1 : -1;
+  const groups = new Map();
+  for (const l of res.lines) {
+    if (!l || !l.pv.length) continue;
+    const d = describe(fen, l.pv, me), t = tagOf(d);
+    const g = groups.get(t.key) || { title: t.title, lines: [] };
+    g.lines.push({ uci: l.uci, first: d.sans[0], cp: sign * l.cp, sans: d.sans.slice(0, 8).join(' '), d });
+    groups.set(t.key, g);
+  }
+  ideas = [...groups.values()].sort((a, b) => Math.max(...b.lines.map((l) => l.cp)) - Math.max(...a.lines.map((l) => l.cp)));
+  cur = { fen, me, total: res.lines.filter(Boolean).length };
+  sel = -1; $('status').textContent = 'Click an idea to see its moves on the board.';
+  drawArrows(); render();
+}
+
+function showHumans(fenIndex, me) {
+  const box = $('humans'), s = data && fenIndex >= 0 ? data.structures[fenIndex] : null;
+  if (!s) { box.hidden = true; return; }
+  const rows = s.plans[me].map((p) => `<div class="small"><b>${p.label}</b>: ${Math.round(p.share * 100)}% of players, ${p.verdict}${p.engine ? `, engine ${p.engine.cp >= 0 ? '+' : '−'}${Math.abs(p.engine.cp / 100).toFixed(2)} by move 25` : ''}</div>`).join('');
+  box.innerHTML = `<h3 style="margin:0 0 6px">What real players do from this structure</h3>${rows}`;
+  box.hidden = false;
+}
+
+async function start() {
+  data = await fetch('data/plans/kid.json').then((r) => r.json());
+  $('pos').innerHTML = data.structures.map((s, i) => `<option value="${i}">${s.title}</option>`).join('');
+  const go = () => { const i = +$('pos').value; showHumans(i, $('me').value); run(data.structures[i].fen, $('me').value); };
+  $('pos').onchange = go; $('me').onchange = go;
+  $('useFen').onclick = () => { const f = $('fen').value.trim(); if (!f) return; try { new Chess(f); } catch (e) { $('status').textContent = 'That FEN is not valid.'; return; } showHumans(-1, $('me').value); run(f, $('me').value); };
+  go();
+}
+start();
+</script>
+</body>
+</html>
