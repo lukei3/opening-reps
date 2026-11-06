@@ -1,4 +1,4 @@
-// Plans: what real players do after the opening line ends, and how it turned out. Self-contained: it only reads
+﻿// Plans: what real players do after the opening line ends, and how it turned out. Self-contained: it only reads
 // data/plans/kid.json (made by tools/plans/build_cards.py) and draws a read-only board.
 
 import { Chess } from '../lib/chess.js';
@@ -31,7 +31,7 @@ async function load() {
 }
 
 const pct = (x) => `${Math.round(x * 100)}%`;
-const signed = (x, d = 1) => `${x >= 0 ? '+' : '−'}${Math.abs(x).toFixed(d)}`;
+const signed = (x, d = 1) => `${x >= 0 ? '+' : 'âˆ’'}${Math.abs(x).toFixed(d)}`;
 
 function moveText(moves) {
   let out = '';
@@ -43,9 +43,9 @@ function overview() {
   const c = data.castling_engine || {};
   const lines = [];
   const a = c['attack on their king|same side'], o = c['attack on their king|opposite sides'], m = c['central play|same side'];
-  if (a) lines.push(`When both kings are on the same side, pushing pawns at the king cost the engine's verdict <b>${Math.abs(a.cp)} centipawns</b> on average between move 12 and 25 (${a.n.toLocaleString()} games, ± ${a.ci}). That is roughly a quarter of a pawn.`);
-  if (o) lines.push(`With kings on opposite sides the same attack is ${o.cp >= 0 ? 'ahead' : 'behind'} by ${Math.abs(o.cp)} centipawns, but only ${o.n.toLocaleString()} games qualify (± ${o.ci}), so treat it as a hint.`);
-  if (m) lines.push(`Breaking open the centre was the plan the engine liked best (${signed(m.cp / 100, 2)} pawns, ± ${(m.ci / 100).toFixed(2)}), yet it is played in under one game in ten.`);
+  if (a) lines.push(`When both kings are on the same side, pushing pawns at the king cost the engine's verdict <b>${Math.abs(a.cp)} centipawns</b> on average between move 12 and 25 (${a.n.toLocaleString()} games, Â± ${a.ci}). That is roughly a quarter of a pawn.`);
+  if (o) lines.push(`With kings on opposite sides the same attack is ${o.cp >= 0 ? 'ahead' : 'behind'} by ${Math.abs(o.cp)} centipawns, but only ${o.n.toLocaleString()} games qualify (Â± ${o.ci}), so treat it as a hint.`);
+  if (m) lines.push(`Breaking open the centre was the plan the engine liked best (${signed(m.cp / 100, 2)} pawns, Â± ${(m.ci / 100).toFixed(2)}), yet it is played in under one game in ten.`);
   return lines;
 }
 
@@ -80,7 +80,7 @@ function planRow(p) {
     eng = `Engine: <b>${signed(e.cp / 100, 2)}</b> pawns by move 25${sig ? '' : ' <span class="muted">(unclear)</span>'}`;
   }
   const on = view.plan === p.plan ? ' on' : '';
-  const arrows = p.arrows.length ? `<span class="muted small">Typical pushes (arrows): ${p.arrows.map((a) => `${a.uci.slice(0, 2)}–${a.uci.slice(2, 4)}`).join(', ')}</span>` : '';
+  const arrows = p.arrows.length ? `<span class="muted small">Typical pushes (arrows): ${p.arrows.map((a) => `${a.uci.slice(0, 2)}â€“${a.uci.slice(2, 4)}`).join(', ')}</span>` : '';
   return `<button type="button" class="pl-plan${on}" data-plan="${esc(p.plan)}">
     <span class="pl-top"><b>${esc(p.label)}</b><span class="muted">${pct(p.share)} of games</span></span>
     ${bar}
@@ -101,7 +101,7 @@ function renderCard() {
   drawBoard();
 }
 
-let mode = 'adv', modeWired = false;
+let mode = 'stats', modeWired = false;   // the advisor and the drill are parked (their chips are hidden) until they are reworked
 export function showPlans() {
   if (!modeWired) {
     modeWired = true;
