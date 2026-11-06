@@ -850,3 +850,27 @@ body { text-rendering: optimizeLegibility; }
 table.ana td.ev { text-align: center; }
 table.ana th:nth-child(2) { text-align: center; }
 .liveeval .chip.evbox { min-width: 52px; font-size: 14px; }
+
+/* ---------- Plans tab ---------- */
+.pl-wrap { display: grid; gap: 14px; max-width: 1040px; margin: 0 auto; }
+.pl-points { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.5; font-size: 14px; }
+.pl-share { margin-left: 8px; color: var(--muted); font-size: 12px; }
+#plPicker .chip { flex: 0 1 auto; }
+.pl-card { display: grid; grid-template-columns: minmax(280px, 460px) 1fr; gap: 22px; align-items: start; }
+.pl-boardcol h3 { margin: 0 0 2px; font-size: 16px; }
+.pl-boardcol p { margin: 0 0 10px; }
+.pl-moves { margin-top: 10px !important; line-height: 1.5; }
+.pl-plancol { display: grid; gap: 10px; }
+#plPlans { display: grid; gap: 8px; }
+.pl-plan { display: grid; gap: 6px; text-align: left; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; cursor: pointer; }
+.pl-plan:hover { background: rgba(255, 255, 255, 0.04); }
+.pl-plan.on { border-color: var(--accent); background: rgba(255, 255, 255, 0.05); }
+.pl-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.pl-line { line-height: 1.4; }
+.pl-bar { position: relative; display: block; height: 6px; border-radius: 3px; background: var(--panel2); }
+.pl-bar::before { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: 0.6; }
+.pl-bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.pl-bar i.up { left: 50%; background: var(--good); }
+.pl-bar i.down { right: 50%; background: var(--bad); }
+.pl-bar i.faint { opacity: 0.35; }
+@media (max-width: 820px) { .pl-card { grid-template-columns: 1fr; } }

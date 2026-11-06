@@ -16,7 +16,8 @@
     <button data-tab="train" class="on">Train</button>
     <button data-tab="drills">Drills</button>
     <button data-tab="studies">Studies</button>
-    <button data-tab="progress">Progress</button>
+    <button data-tab="plans">Plans</button>
+<button data-tab="progress">Progress</button>
     <button data-tab="settings" id="devtab" hidden>Developer</button>
   </nav>
 </header>
@@ -241,6 +242,27 @@
   </section>
 
   <!-- PROGRESS -->
+  <section id="tab-plans" hidden>
+    <div class="pl-wrap">
+      <div class="sthead"><h2>Plans</h2><p class="muted small">After the opening line ends, what do players actually do, and does it work? Pick a structure from the King's Indian, then a plan.</p></div>
+      <div id="plMsg" class="stmsg" role="status"></div>
+      <div id="plOverview" class="card"></div>
+      <div id="plPicker" class="chips"></div>
+      <div class="pl-card card">
+        <div class="pl-boardcol">
+          <h3 id="plTitle"></h3>
+          <p class="muted small" id="plCount"></p>
+          <div class="board-wrap"><div id="plBoard"></div></div>
+          <p class="muted small pl-moves" id="plMoves"></p>
+        </div>
+        <div class="pl-plancol">
+          <div id="plSide" class="chips"></div>
+          <div id="plPlans"></div>
+          <p class="muted small">Tap a plan to see its typical pawn pushes on the board. Percentages compare the result with what the rating gap predicts, so they show the plan, not the players.</p>
+        </div>
+      </div>
+    </div>
+  </section>
   <section id="tab-progress" hidden>
     <div class="card">
       <div id="statsSummary" class="stats"></div>
