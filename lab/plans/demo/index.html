@@ -69,7 +69,7 @@ function draw() {
   const c = cases[i], chess = new Chess();
   let last = null;
   for (let k = 0; k < ply; k++) { const m = chess.move(c.moves[k]); last = [m.from, m.to]; }
-  board.set({ pieces: pieceMap(chess), orientation: c.side, lastMove: last });
+  board.set({ pieces: pieceMap(chess), orientation: 'b', lastMove: last });
   const mv = c.moves.slice(0, ply).map((m, k) => (k % 2 === 0 ? `${k / 2 + 1}. ` : '') + m).join(' ');
   $('moves').textContent = answered ? mv : 'Moves so far are hidden until you answer. Look at the position.';
   if (!answered) $('moves').textContent = 'Position after move 12.';

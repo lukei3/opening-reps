@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 let data = null, loading = null, board = null;
-const view = { s: 0, side: 'w', plan: null };
+const view = { s: 0, side: 'b', plan: null };     // the King's Indian is a Black opening: Black's side of the board, Black's plan first
 
 const COLORS = { w: '#2f9e6b', b: '#d9822b' };
 
@@ -61,7 +61,7 @@ function renderPicker() {
 
 function drawBoard() {
   const s = data.structures[view.s];
-  board.set({ pieces: pieceMap(s.fen), orientation: 'w', lastMove: s.last ? [s.last.slice(0, 2), s.last.slice(2, 4)] : null });
+  board.set({ pieces: pieceMap(s.fen), orientation: 'b', lastMove: s.last ? [s.last.slice(0, 2), s.last.slice(2, 4)] : null });
   const p = view.plan && s.plans[view.side].find((x) => x.plan === view.plan);
   const arrows = ((p && p.arrows) || []).map((a) => ({ from: a.uci.slice(0, 2), to: a.uci.slice(2, 4), color: COLORS[view.side], opacity: 0.85, width: 0.16 }));
   board.setShapes({ arrows, circles: [] });
@@ -91,7 +91,7 @@ function renderCard() {
   const s = data.structures[view.s];
   const rows = s.plans[view.side];
   if (!view.plan || !rows.some((r) => r.plan === view.plan)) view.plan = rows.length ? rows[0].plan : null;
-  $('plSide').innerHTML = ['w', 'b'].map((k) => `<button type="button" class="chip${view.side === k ? ' on' : ''}" data-side="${k}">${k === 'w' ? "White's" : "Black's"} plan</button>`).join('');
+  $('plSide').innerHTML = ['b', 'w'].map((k) => `<button type="button" class="chip${view.side === k ? ' on' : ''}" data-side="${k}">${k === 'w' ? "White's plan (your opponent)" : 'Your plan (Black)'}</button>`).join('');
   $('plPlans').innerHTML = rows.length ? rows.map(planRow).join('') : '<p class="muted">Not enough games here to say.</p>';
   $('plMoves').textContent = moveText(s.moves);
   $('plTitle').textContent = s.title;
