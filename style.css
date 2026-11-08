@@ -954,3 +954,9 @@ table.ana th:nth-child(2) { text-align: center; }
 .id-pick { font-size: 12px; padding: 3px 9px; }
 .id-pick.on { border-color: var(--good); color: var(--good); }
 .id-note { flex: 1 1 180px; min-width: 140px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; font-size: 12.5px; }
+
+/* ---------- What now? (end of a Train line) ---------- */
+.wn { margin: 12px 0; }
+.wn h3 { margin: 0 0 4px; font-size: 15px; }
+.wn-idea { padding: 5px 0; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; }
+.wn-fb.good { color: var(--good); } .wn-fb.bad { color: var(--bad); }

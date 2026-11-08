@@ -12,6 +12,7 @@ import { play, moveSound, setSound, soundOn, warmSounds } from './sounds.js';
 import { showStudies } from './studies.js';
 import { showDrills } from './drills.js';
 import { showPlans } from './plans.js';
+import { showWhatNow } from './whatnow.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -1009,8 +1010,10 @@ function finish(msg, failed = false) {
     <h2>${failed ? 'Stopped' : clean ? 'Clean line' : 'Line finished'}</h2>
     <p>${esc(msg)}${failed ? '' : ` You made ${G.decisions} decision${G.decisions === 1 ? '' : 's'} and ${G.mistakes} mistake${G.mistakes === 1 ? '' : 's'}.`}</p>
     <div class="row"><button class="primary" id="againBtn">Another line</button></div>
+    <div id="whatNow"></div>
     <div id="sumBody" class="sumbody"></div>`;
   $('done').hidden = false;
+  if (!failed) showWhatNow($('whatNow'), G.chess.fen());
   if (G.chess.history().length > G.startPly) lineSummary(id);
   $('againBtn').onclick = () => startGame(undefined, { sans: G.sans0 });
   $('mistake').hidden = true;
