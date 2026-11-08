@@ -1,0 +1,46 @@
+# Plans lab (see lab/plans/README.md): Stockfish 11 evaluation parts along engine lines, for labelling ideas.
+# Stockfish 11 is built from the official source (tag sf_11) because its "eval" command still prints the classical terms.
+name: "Plans lab: evaluation parts"
+
+on:
+  workflow_dispatch:
+    inputs:
+      input:
+        description: 'Input file in the repo'
+        default: 'lab/plans/data/terms-input.jsonl.gz'
+      depth:
+        description: 'Search depth'
+        default: '12'
+
+jobs:
+  terms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install chess
+      - name: Build Stockfish 11
+        run: |
+          git clone --depth 1 --branch sf_11 https://github.com/official-stockfish/Stockfish.git sf
+          cd sf/src && make -j4 build ARCH=x86-64-modern COMP=gcc > /dev/null && cp stockfish ../../stockfish
+          cd ../.. && echo -e "uci\nquit" | ./stockfish | head -1
+      - name: Evaluate
+        env:
+          INPUT: ${{ inputs.input }}
+          DEPTH: ${{ inputs.depth }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python tools/plans/engine_terms.py "${INPUT}" --out "terms-${SHARD}.jsonl" --shard "${SHARD}" --shards 12 --depth "${DEPTH}" --engine ./stockfish --minutes 320
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plans-terms-${{ matrix.shard }}
+          path: terms-${{ matrix.shard }}.jsonl
+          retention-days: 30
