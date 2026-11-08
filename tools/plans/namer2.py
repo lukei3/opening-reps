@@ -99,7 +99,61 @@ def features(fen, uci):
         return None
     if b.king(chess.WHITE) is None or b.king(chess.BLACK) is None or mv not in b.legal_moves:
         return None
-    return position_features(b) + move_features(b, mv) + extra_features(b, mv)
+    return position_features(b) + move_features(b, mv) + extra_features(b, mv) + learned(fen, uci)
+
+
+# ---- learned features: Maia-2's view of the position and move (and Leela's, if present), and Stockfish 11's part changes ----
+BRAIN, BRAIN_DIM, TERMS = {}, 0, {}
+PARTS = ['Mobility', 'King safety:own', 'King safety:opp', 'Pawns', 'Passed', 'Space', 'Threats', 'Knights', 'Bishops', 'Rooks',
+         'Material', 'Imbalance', 'Initiative']
+
+
+def key_of(fen, uci):
+    return ' '.join(fen.split()[:4]) + '|' + uci
+
+
+BASELINE = False          # True: load the learned features only to choose the same moves, but do not use them
+
+
+def learned(fen, uci):
+    if BASELINE or (not BRAIN_DIM and not TERMS):
+        return []
+    k = key_of(fen, uci)
+    out = list(BRAIN.get(k, [float('nan')] * BRAIN_DIM)) if BRAIN_DIM else []
+    if TERMS:
+        z = TERMS.get(k)
+        out += [z.get(p, float('nan')) for p in PARTS] if z else [float('nan')] * len(PARTS)
+    return out
+
+
+def load_learned(brain_paths, terms_path, dims=48):
+    """Maia-2's hidden layer is large; keep its main directions (PCA) for the position and for the change the move makes."""
+    global BRAIN, BRAIN_DIM, TERMS
+    if brain_paths:
+        from sklearn.decomposition import PCA
+        ids, before, delta, extra, leela = [], [], [], [], []
+        for p in brain_paths:
+            d = np.load(p, allow_pickle=False)
+            if not len(d['ids']):
+                continue
+            ids += list(d['ids']); b = d['before'].astype(np.float32); a = d['after'].astype(np.float32)
+            before.append(b); delta.append(a - b); extra.append(d['extra'])
+            lz = d['leela'] if len(d['leela']) == len(d['ids']) else np.full((len(d['ids']), 5), np.nan, dtype=np.float32)
+            leela.append(lz)
+        B, D, E, L = np.vstack(before), np.vstack(delta), np.vstack(extra), np.vstack(leela)
+        pb = PCA(dims, random_state=0).fit_transform(B)
+        pd_ = PCA(dims, random_state=0).fit_transform(D)
+        M = np.hstack([pb, pd_, E, L])
+        BRAIN = {k: M[i] for i, k in enumerate(ids)}
+        BRAIN_DIM = M.shape[1]
+        print(f'Maia-2 features for {len(ids):,} moves ({BRAIN_DIM} numbers each; Leela present for {int((~np.isnan(L[:, 0])).sum()):,})', flush=True)
+    if terms_path:
+        import gzip as _gz
+        for line in _gz.open(terms_path, 'rt', encoding='utf-8'):
+            r = json.loads(line)
+            if r.get('z'):
+                TERMS[key_of(r['fen'], r['uci'])] = r['z']
+        print(f'Stockfish part changes for {len(TERMS):,} moves', flush=True)
 
 
 def load_rows(paths, trust=None, limit_per_src=0):
@@ -129,9 +183,16 @@ def main():
     ap.add_argument('--comments', type=int, default=40000, help='comment rows per source to test on')
     ap.add_argument('--weak', default='', help='comment sources to ALSO train on (comma list); they are then left out of the outside check')
     ap.add_argument('--weak-weight', type=float, default=0.3)
+    ap.add_argument('--brain', nargs='*', default=[], help='brain-*.npz files from brain_embed.py (Maia-2, Leela)')
+    ap.add_argument('--terms', default='', help='engine-labels.jsonl.gz from term_labels.py')
+    ap.add_argument('--only-learned', action='store_true', help='keep only moves that have Maia-2 features (fair comparison)')
+    ap.add_argument('--baseline', action='store_true', help='same moves as --only-learned, but without the learned features')
     ap.add_argument('--verdicts', default='', help="idea-verdicts.json saved from the Ideas view: 'right' adds the idea as a label, 'wrong' rules it out")
     a = ap.parse_args()
     weak_src = {x for x in a.weak.split(',') if x}
+    load_learned(a.brain, a.terms)
+    global BASELINE
+    BASELINE = a.baseline
 
     # expert training data: best moves with at least one label
     X, Y, src = [], [], []
@@ -139,6 +200,8 @@ def main():
         if not r['labels'] or r['best'] is False:
             continue
         x = features(r['fen'], r['uci'])
+        if a.only_learned and key_of(r['fen'], r['uci']) not in BRAIN:
+            continue
         if x is None:
             continue
         X.append(x); Y.append(set(r['labels'])); src.append(r['src'])
@@ -175,6 +238,8 @@ def main():
             if r['src'] not in weak_src:
                 continue
             x = features(r['fen'], r['uci'])
+            if a.only_learned and key_of(r['fen'], r['uci']) not in BRAIN:
+                continue
             if x is not None:
                 Xw.append(x); Yw.append(set(r['labels']))
     Xw = np.array(Xw, dtype=float) if Xw else np.zeros((0, X.shape[1]))
@@ -211,7 +276,7 @@ def main():
     # final models on all expert data
     final = {idea: fit(idea, X, Y) for idea in ideas}
     with open(a.model, 'wb') as f:
-        pickle.dump({'ideas': ideas, 'models': final, 'names': POS_NAMES + MOVE_NAMES + EXTRA_NAMES}, f)
+        pickle.dump({'ideas': ideas, 'models': final, 'names': POS_NAMES + MOVE_NAMES + EXTRA_NAMES, 'learned': bool(BRAIN_DIM or TERMS)}, f)
 
     # 2. outside check on human comments
     test = collections.defaultdict(list)
@@ -219,6 +284,8 @@ def main():
         if r['src'] in weak_src:
             continue
         x = features(r['fen'], r['uci'])
+        if a.only_learned and key_of(r['fen'], r['uci']) not in BRAIN:
+            continue
         if x is not None:
             test[r['src']].append((x, set(r['labels'])))
     md = ["# Idea namer v2: trained on expert labels, checked on human comments\n",

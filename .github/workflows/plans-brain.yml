@@ -32,7 +32,10 @@ jobs:
           pip install meson ninja pybind11
           git clone --depth 1 --recurse-submodules https://github.com/LeelaChessZero/lc0.git lc0
           cd lc0
-          pip install . || (meson setup build --buildtype=release -Dpython_bindings=true -Dgtest=false && ninja -C build && cp build/*.so $(python -c "import site;print(site.getsitepackages()[0])")/)
+          for attempt in 1 2 3 4; do
+            pip install . && break
+            echo "build attempt $attempt failed (often a temporary download error); retrying in a minute"; sleep 60
+          done
           cd ..
           for u in https://storage.lczero.org/files/networks-contrib/t1-256x10-distilled-swa-2432500.pb.gz https://storage.lczero.org/files/networks-contrib/t1-smolgen-512x15x8h-distilled-swa-3395000.pb.gz; do
             curl -sfL -o net.pb.gz "$u" && break

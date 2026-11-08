@@ -10,7 +10,7 @@ async function load() {
   if (!loading) {
     loading = (async () => {
       const map = new Map();
-      for (const url of ['data/plans/ideas.json', 'data/plans/ideas-all.json']) {
+      for (const url of ['data/plans/ideas.json']) {
         try {
           const r = await fetch(url);
           if (!r.ok) continue;
@@ -27,11 +27,27 @@ async function load() {
 
 const pawns = (cp) => `${cp >= 0 ? '+' : '−'}${Math.abs(cp / 100).toFixed(2)}`;
 
+// The ideas for every opening are split into 256 small files by the same position hash as the opening book.
+const shardCache = new Map();
+function shardOf(key, n = 256) {
+  let h = 5381;
+  for (const ch of new TextEncoder().encode(key)) h = (Math.imul(h, 33) ^ ch) >>> 0;
+  return h % n;
+}
+async function fromShards(key) {
+  const s = shardOf(key);
+  if (!shardCache.has(s)) {
+    shardCache.set(s, fetch(`data/plans/ideas/s${String(s).padStart(3, '0')}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+  }
+  return (await shardCache.get(s))[key] || null;
+}
+
 /** Fill `box` with the ideas for `fen`, or leave it empty if this position has none yet. */
 export async function showWhatNow(box, fen) {
   if (!box) return;
   const map = await load();
-  const p = map.get(fen.split(' ').slice(0, 4).join(' '));
+  const key = fen.split(' ').slice(0, 4).join(' ');
+  const p = map.get(key) || await fromShards(key);
   if (!p) { box.innerHTML = ''; return; }
   const ideas = p.ideas.filter((g) => g.theme !== 'unclear').slice(0, 3);
   if (!ideas.length) { box.innerHTML = ''; return; }

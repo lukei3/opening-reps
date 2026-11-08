@@ -15,6 +15,7 @@ import chess
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import namer2  # noqa: E402
 from namer2 import features  # noqa: E402
 
 NAMES = {
@@ -90,9 +91,13 @@ def main():
     ap.add_argument('lines', nargs='+')
     ap.add_argument('--out', required=True)
     ap.add_argument('--report', required=True)
+    ap.add_argument('--brain', nargs='*', default=[])
+    ap.add_argument('--engine-labels', default='')
     a = ap.parse_args()
     with open(a.model, 'rb') as f:
         m = pickle.load(f)
+    if m.get('learned'):
+        namer2.load_learned(a.brain, a.engine_labels)
     ideas, models = m['ideas'], m['models']
 
     def name(rows):
