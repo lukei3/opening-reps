@@ -965,3 +965,12 @@ table.ana th:nth-child(2) { text-align: center; }
 
 #idSource .chip { flex: 0 1 auto; }
 #idAnyFen { flex: 1 1 220px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
+
+/* ---------- Plan drill ---------- */
+.pd-opts { display: grid; gap: 8px; margin: 8px 0; }
+.pd-opt { text-align: left; padding: 10px 12px; }
+.pd-opt.right { border-color: var(--good); color: var(--good); }
+.pd-opt.wrong { border-color: var(--bad); color: var(--bad); }
+.pd-opt.dim { opacity: .5; }
+.pd-line { padding: 4px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+#pdFb .good { color: var(--good); } #pdFb .bad { color: var(--bad); }

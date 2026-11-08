@@ -4,7 +4,7 @@
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
 import { showAdvisor, openFen } from './advisor.js';
-import { showDrill } from './plandrill.js';
+import { showPlanDrill } from './plandrill2.js';
 import { showThemes } from './themes.js';
 import { showIdeas } from './ideas.js';
 
@@ -116,7 +116,7 @@ export function showPlans() {
   $('plStatsPane').hidden = mode !== 'stats';
   $('plThemesPane').hidden = mode !== 'themes';
   $('plIdeasPane').hidden = mode !== 'ideas';
-  if (mode === 'adv') showAdvisor(); else if (mode === 'drill') showDrill(); else if (mode === 'themes') showThemes(); else if (mode === 'ideas') showIdeas(); else showStats();
+  if (mode === 'adv') showAdvisor(); else if (mode === 'drill') showPlanDrill(); else if (mode === 'themes') showThemes(); else if (mode === 'ideas') showIdeas(); else showStats();
 }
 
 async function showStats() {
