@@ -129,6 +129,7 @@ def main():
     ap.add_argument('--comments', type=int, default=40000, help='comment rows per source to test on')
     ap.add_argument('--weak', default='', help='comment sources to ALSO train on (comma list); they are then left out of the outside check')
     ap.add_argument('--weak-weight', type=float, default=0.3)
+    ap.add_argument('--verdicts', default='', help="idea-verdicts.json saved from the Ideas view: 'right' adds the idea as a label, 'wrong' rules it out")
     a = ap.parse_args()
     weak_src = {x for x in a.weak.split(',') if x}
 
@@ -141,6 +142,18 @@ def main():
         if x is None:
             continue
         X.append(x); Y.append(set(r['labels'])); src.append(r['src'])
+    neg = [set() for _ in X]                 # ideas a person said do NOT fit this move
+    if a.verdicts:
+        for v in json.load(open(a.verdicts, encoding='utf-8')):
+            x = features(v['fen'], v['uci'])
+            if x is None or v.get('idea') in (None, 'unclear'):
+                continue
+            X.append(x); src.append('your-verdicts')
+            if v['verdict'] == 'right':
+                Y.append({v['idea']}); neg.append(set())
+            else:
+                Y.append(set()); neg.append({v['idea']})
+        print(f"{sum(1 for s_ in src if s_ == 'your-verdicts')} of your verdicts added", flush=True)
     X = np.array(X, dtype=float)
     counts = collections.Counter(l for ys in Y for l in ys)
     ideas = sorted(l for l, c in counts.items() if c >= MIN_POS and l != 'other')

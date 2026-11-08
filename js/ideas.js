@@ -117,6 +117,18 @@ export async function showIdeas() {
     $('idSide').addEventListener('click', (e) => { const b = e.target.closest('[data-side]'); if (b) { view.side = b.dataset.side; cur = 0; render(); } });
     $('idPick').addEventListener('change', () => { cur = +$('idPick').value; render(); });
     $('idRandom').addEventListener('click', () => { cur = Math.floor(Math.random() * list.length); render(); });
+    // Active learning: your verdicts teach the namer most where it is least sure, so offer those positions first.
+    $('idUnsure').addEventListener('click', () => {
+      const score = (p) => {
+        const moves = p.ideas.flatMap((g) => g.moves.map((m) => ({ m, g })));
+        const open = moves.filter(({ m }) => !verdicts[vKey(p.fen, m.uci)]);
+        if (!open.length) return Infinity;
+        return Math.min(...open.map(({ m, g }) => (g.theme === 'unclear' ? 0.5 : Math.abs(m.conf - 0.5))));
+      };
+      let best = 0, bestS = Infinity;
+      list.forEach((p, i) => { const s2 = score(p); if (s2 < bestS) { bestS = s2; best = i; } });
+      cur = best; render();
+    });
     $('idBody').addEventListener('click', (e) => {
       const p = list[cur];
       if (e.target.id === 'idExport') {

@@ -22,7 +22,7 @@ PIECE = {'P': chess.PAWN, 'KT': chess.KNIGHT, 'N': chess.KNIGHT, 'B': chess.BISH
 FILE_OF = {'QR': 0, 'QKT': 1, 'QN': 1, 'QB': 2, 'Q': 3, 'K': 4, 'KB': 5, 'KKT': 6, 'KN': 6, 'KR': 7}
 FILES_FOR = {'R': (0, 7), 'KT': (1, 6), 'N': (1, 6), 'B': (2, 5), 'Q': (3,), 'K': (4,)}
 
-MOVE_LINE = re.compile(r'^\s*(\d+)\s*\.\s+(.*\S)\s*$')
+MOVE_LINE = re.compile(r'^\s*\(?(\d+)\s*[.)]\s+(.*\S)\s*$')     # '1. P-K4  P-K4' or E. Lasker's '(3) Kt-QB3  P-QB4'
 SQUARE = re.compile(r'^(K|Q)?(KT|N|B|R)?(SQ|[1-8])$')
 
 
@@ -200,6 +200,14 @@ def read_diagram(lines, i):
     return board, j
 
 
+def hist_has(hist, num, white):
+    """Index of the move with this number and colour in the current game, if it was already played."""
+    for idx, (n, w, _) in enumerate(hist):
+        if n == num and w == white:
+            return idx
+    return None
+
+
 def split_moves(body):
     parts = re.split(r'\s{2,}|\t+', body.strip())
     parts = [p for p in parts if p]
@@ -216,6 +224,7 @@ def convert(path, src, out):
     lines = open(path, encoding='utf-8', errors='replace').read().splitlines()
     stats = {'games': 0, 'moves': 0, 'comments': 0, 'diagrams': 0, 'stopped': 0}
     board = None
+    hist = []                   # (move number, white?, position before the move) for rewinding to side lines
     pending = None              # a diagram waiting for its moves
     last = None                 # (fen before, uci) of the last move played
     buf = []
@@ -245,19 +254,28 @@ def convert(path, src, out):
             num = int(m.group(1))
             w, b = split_moves(m.group(2))
             flush()
-            if num == 1:
+            white_dots = not w or w.strip('. ') == ''
+            if num == 1 and not hist_has(hist, 1, not white_dots):
                 if pending is not None:
                     board = pending.copy()
-                    board.turn = chess.BLACK if w and w.strip('. ') == '' else chess.WHITE
+                    board.turn = chess.BLACK if white_dots else chess.WHITE
                     pending = None
                 else:
                     board = chess.Board()
                 last = None
+                hist = []
                 stats['games'] += 1
+            else:
+                # a side line: the move number goes back (or repeats). Rewind to the position before that move.
+                at = hist_has(hist, num, not white_dots)
+                if at is not None:
+                    board = chess.Board(hist[at][2])
+                    hist = hist[:at]
+                    stats['variations'] = stats.get('variations', 0) + 1
             if board is None:
                 i += 1
                 continue
-            for tok in (w, b):
+            for k, tok in enumerate((w, b)):
                 if not tok or tok.strip('. ') == '':
                     continue
                 mv = find_move(board, tok)
@@ -265,6 +283,7 @@ def convert(path, src, out):
                     board = None
                     stats['stopped'] += 1
                     break
+                hist.append((num, k == 0, board.fen()))
                 last = (board.fen(), mv.uci())
                 board.push(mv)
                 stats['moves'] += 1
