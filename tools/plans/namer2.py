@@ -274,9 +274,23 @@ def main():
         by_src[s] = (np.mean([ideas[int(P[i].argmax())] in Y[i] for i in idx]), np.mean([any(ideas[k] in Y[i] for k in np.argsort(-P[i])[:3]) for i in idx]))
 
     # final models on all expert data
+    # per-idea "sure enough" threshold: on the cross-validated scores, the cut that best balances precision and recall (F1),
+    # but never below 0.2. Below it the app says "no clear idea" instead of guessing.
+    thresholds = {}
+    for j, idea in enumerate(ideas):
+        y = np.array([idea in ys for ys in Y], dtype=int)
+        best_t, best_f = 0.3, -1
+        for t in np.arange(0.2, 0.81, 0.05):
+            pred = P[:, j] >= t
+            tp = int((pred & (y == 1)).sum()); fp = int((pred & (y == 0)).sum()); fn = int((~pred & (y == 1)).sum())
+            f1 = 2 * tp / (2 * tp + fp + fn) if tp else 0.0
+            if f1 > best_f:
+                best_f, best_t = f1, float(round(t, 2))
+        thresholds[idea] = best_t
+    print('thresholds:', thresholds, flush=True)
     final = {idea: fit(idea, X, Y) for idea in ideas}
     with open(a.model, 'wb') as f:
-        pickle.dump({'ideas': ideas, 'models': final, 'names': POS_NAMES + MOVE_NAMES + EXTRA_NAMES, 'learned': bool(BRAIN_DIM or TERMS)}, f)
+        pickle.dump({'ideas': ideas, 'models': final, 'names': POS_NAMES + MOVE_NAMES + EXTRA_NAMES, 'learned': bool(BRAIN_DIM or TERMS), 'thresholds': thresholds}, f)
 
     # 2. outside check on human comments
     test = collections.defaultdict(list)

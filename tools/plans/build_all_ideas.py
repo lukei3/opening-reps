@@ -69,7 +69,7 @@ def main():
             order = np.argsort(-prow)
             idea, p = ideas[order[0]], float(prow[order[0]])
             prepares = None
-            if p < SURE:
+            if p < m.get('thresholds', {}).get(idea, SURE):
                 idea = 'unclear'
             else:
                 idea, prepares = place_idea(board, l['line'], idea)

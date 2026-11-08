@@ -140,7 +140,7 @@ def main():
         for (l, _), top in zip(keep, named):
             idea, p = top[0]
             prepares = None
-            if p < SURE:
+            if p < m.get('thresholds', {}).get(idea, SURE):
                 idea = 'unclear'
             else:
                 idea, prepares = place_idea(board, l['pv'], idea)
