@@ -35,23 +35,30 @@ def main():
     ap.add_argument('--data', required=True)
     a = ap.parse_args()
     d = a.data
+
+    def f(name):
+        """A data file, either in DATA_DIR or in DATA_DIR/corpus."""
+        for base in (d, os.path.join(d, 'corpus')):
+            if os.path.exists(os.path.join(base, name)):
+                return os.path.join(base, name)
+        return os.path.join(d, name)
     brain = glob.glob(os.path.join(d, 'brain', '*', '*.npz'))
     model = os.path.join(d, 'namer-yours.pkl')
-    args = [os.path.join(HERE, 'namer2.py'), os.path.join(d, 'corpus2.jsonl.gz'), os.path.join(d, 'books.jsonl'),
+    args = [os.path.join(HERE, 'namer2.py'), f('corpus2.jsonl.gz'), f('books.jsonl'),
             '--report', os.path.join(ROOT, 'lab', 'plans', 'out', 'namer-check.md'), '--model', model, '--comments', '60000',
             '--weak', 'lichess-studies,chessgpt-annotated,wikibooks,lichess-practice', '--weak-weight', '0.3',
-            '--terms', os.path.join(d, 'engine-labels.jsonl.gz'), '--brain'] + brain
+            '--terms', f('engine-labels.jsonl.gz'), '--brain'] + brain
     if a.verdicts:
         args += ['--verdicts', a.verdicts]
     run(args)
     lines = glob.glob(os.path.join(d, 'lines', '*', 'lines-*.jsonl'))
     run([os.path.join(HERE, 'build_ideas.py'), model, os.path.join(ROOT, 'lab', 'plans', 'data', 'kid-positions.json')] + lines +
         ['--out', os.path.join(ROOT, 'data', 'plans', 'ideas.json'), '--report', os.path.join(ROOT, 'lab', 'plans', 'out', 'kid-ideas.md'),
-         '--plans', os.path.join(d, 'plan-clusters-assign.jsonl.gz'), '--engine-labels', os.path.join(d, 'engine-labels.jsonl.gz'), '--brain'] + brain)
+         '--plans', f('plan-clusters-assign.jsonl.gz'), '--engine-labels', f('engine-labels.jsonl.gz'), '--brain'] + brain)
     terms = glob.glob(os.path.join(d, 'bookterms', '*', 'terms-*.jsonl'))
     if terms:
         run([os.path.join(HERE, 'build_all_ideas.py'), model] + terms + ['--out', os.path.join(ROOT, 'data', 'plans', 'ideas'),
-            '--engine-labels', os.path.join(d, 'engine-labels.jsonl.gz'), '--brain'] + brain)
+            '--engine-labels', f('engine-labels.jsonl.gz'), '--brain'] + brain)
     if a.verdicts:
         v = json.load(open(a.verdicts, encoding='utf-8'))
         judged = [x for x in v if x.get('verdict') in ('right', 'partly', 'wrong')]
