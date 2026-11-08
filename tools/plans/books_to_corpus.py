@@ -8,6 +8,7 @@ diagrams are read into positions, so games and endgames that start from a diagra
     python tools/plans/books_to_corpus.py BOOKS_DIR --out books.jsonl
 """
 import argparse
+import io
 import json
 import os
 import re
@@ -23,7 +24,7 @@ FILE_OF = {'QR': 0, 'QKT': 1, 'QN': 1, 'QB': 2, 'Q': 3, 'K': 4, 'KB': 5, 'KKT': 
 FILES_FOR = {'R': (0, 7), 'KT': (1, 6), 'N': (1, 6), 'B': (2, 5), 'Q': (3,), 'K': (4,)}
 
 MOVE_LINE = re.compile(r'^\s*\(?(\d+)\s*[.)]\s+(.*\S)\s*$')     # '1. P-K4  P-K4' or E. Lasker's '(3) Kt-QB3  P-QB4'
-SQUARE = re.compile(r'^(K|Q)?(KT|N|B|R)?(SQ|[1-8])$')
+SQUARE = re.compile(r'^(K|Q)?(KT|N|B|R)?(SQ|[1-8])?$')
 
 
 def files_of(side, piece_file):
@@ -44,7 +45,7 @@ def parse_square(s):
     side, pf, rk = m.groups()
     if not side and not pf:
         return None
-    return files_of(side, pf), (1 if rk == 'SQ' else int(rk))
+    return files_of(side, pf), (1 if rk in ('SQ', None) else int(rk))
 
 
 def rel_rank(sq, color):
@@ -154,7 +155,7 @@ def find_move(board, tok):
                 continue
             victim_sq = mv.to_square if not board.is_en_passant(mv) else chess.square(chess.square_file(mv.to_square), chess.square_rank(mv.from_square))
             victim = board.piece_type_at(victim_sq)
-            sq = parse_square(cap)
+            sq = parse_square(cap) if re.search(r'\d|SQ$', cap) else None     # 'xKT' is a piece, 'xKB3' a square
             if sq:
                 if chess.square_file(mv.to_square) in sq[0] and rel_rank(mv.to_square, me) == sq[1]:
                     cands.append(mv)
@@ -301,6 +302,98 @@ def convert(path, src, out):
     return stats
 
 
+# ---------- the "move stream" reader, for books printed one move per line or with damaged signs ----------
+AMBIG = '\ufffd'
+STREAM_MOVE = re.compile(
+    r"(Castles(?:\s*\(?[KQ]\s*R?\)?)?|O\s*[-\u2013\u2014" + AMBIG + r"]\s*O(?:\s*[-\u2013\u2014" + AMBIG + r"]\s*O)?"
+    r"|(?:[KQ]\s*)?(?:Kt|B|R|Q|K|P)(?:\s*\([^)]{1,6}\))?\s*[-\u2013\u2014x\u00d7:" + AMBIG + r"]\s*"
+    r"(?:[KQ]\s*)?(?:Kt|B|R|Q|K|P)?\s*(?:\d|sq\.?)?(?:\s*P)?)")
+
+
+def stream_token(tok):
+    """Decide what the damaged sign means: a square after it is a move ('to'), a piece is a capture ('takes')."""
+    t = tok.replace('\u2013', '-').replace('\u2014', '-')
+    if AMBIG in t:
+        left, _, right = t.partition(AMBIG)
+        r = right.strip()
+        if re.search(r'\d|sq', r) or re.fullmatch(r'(K|Q)?\s*(Kt|B|R)?', r) and not re.fullmatch(r'(Kt|B|R|Q)', r):
+            t = left + '-' + right
+        else:
+            t = left + 'x' + right
+    return t
+
+
+def stream_convert(path, src, out):
+    text = open(path, encoding='utf-8', errors='replace').read()
+    stats = {'games': 0, 'moves': 0, 'comments': 0, 'stopped': 0}
+    board, hist, last, buf = None, [], None, []
+    pending = None
+
+    def flush():
+        nonlocal buf
+        txt = ' '.join(buf).strip()
+        buf = []
+        if last and len(txt) > 30:
+            fen, uci = last
+            out.write(json.dumps({'src': src, 'trust': 'expert-comment', 'fen': fen, 'uci': uci, 'best': None,
+                                  'labels': text_labels(txt), 'text': txt[:800], 'meta': {'reader': 'stream'}}, ensure_ascii=False) + '\n')
+            stats['comments'] += 1
+
+    for raw in text.splitlines():
+        line = raw.strip().replace('\xa0', ' ')
+        if not line:
+            continue
+        words = re.findall(r'\b[a-z]{3,}\b', line)
+        if len(words) >= 4:
+            buf.append(line)
+            continue
+        num = re.match(r'^(\d{1,3})\s*\.?\s*(.*)$', line)
+        if num and int(num.group(1)) <= 120 and not num.group(2):
+            pending = int(num.group(1))            # the number stands alone; the move comes on the next line
+            continue
+        if not num and pending is not None and STREAM_MOVE.search(line):
+            num = re.match(r'^()(.*)$', line)
+            n_forced = pending
+        else:
+            n_forced = None
+        pending = None
+        if num and (n_forced is not None or int(num.group(1)) <= 120):
+            n = n_forced if n_forced is not None else int(num.group(1))
+            rest = num.group(2)
+            if n == 1:
+                trial = chess.Board()
+                first = STREAM_MOVE.search(rest)
+                if first and find_move(trial, stream_token(first.group(0))):
+                    flush()
+                    board, hist, last = chess.Board(), [], None
+                    stats['games'] += 1
+            elif board is not None or hist:
+                want_white = not rest.startswith('.')
+                at = hist_has(hist, n, want_white)
+                if at is not None:
+                    flush()
+                    board = chess.Board(hist[at][2]); hist = hist[:at]
+            line = rest
+        if board is None:
+            continue
+        found = STREAM_MOVE.findall(line)
+        if not found:
+            continue
+        flush()
+        for tok in found:
+            mv = find_move(board, stream_token(tok))
+            if mv is None:
+                board = None
+                stats['stopped'] += 1
+                break
+            hist.append((board.fullmove_number, board.turn == chess.WHITE, board.fen()))
+            last = (board.fen(), mv.uci())
+            board.push(mv)
+            stats['moves'] += 1
+    flush()
+    return stats
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('books')
@@ -312,12 +405,19 @@ def main():
                           ('pg4902.txt', 'book-bird'), ('pg55278.txt', 'book-young'), ('pg78804.txt', 'book-philidor'),
                           ('ia-middlegameinches00znos.txt', 'book-znosko-middle-game'), ('ia-commonsenseinche00laskrich.txt', 'book-lasker-common-sense'),
                           ('ia-principlesofches00masoiala.txt', 'book-mason-principles'), ('ia-artofchess00maso.txt', 'book-mason-art'),
-                          ('ia-modernchessinstr00steirich.txt', 'book-steinitz-instructor')):
+                          ('ia-modernchessinstr00steirich.txt', 'book-steinitz-instructor'),
+                          ('ws-my-chess-career.txt', 'book-capablanca-career'), ('ws-my-system.txt', 'book-nimzowitsch-my-system'),
+                          ('ws-morphys-games.txt', 'book-morphy-games')):
             path = os.path.join(a.books, name)
             if not os.path.exists(path):
                 continue
-            s = convert(path, src, out)
-            print(src, s)
+            # try both readers and keep whichever recovers more of the author's comments
+            col, stm = io.StringIO(), io.StringIO()
+            s1 = convert(path, src, col)
+            s2 = stream_convert(path, src, stm)
+            best, s = (stm, s2) if s2['comments'] > s1['comments'] else (col, s1)
+            out.write(best.getvalue())
+            print(src, 'stream' if best is stm else 'columns', s)
 
 
 if __name__ == '__main__':

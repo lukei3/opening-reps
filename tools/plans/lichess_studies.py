@@ -46,7 +46,16 @@ def main():
     ap.add_argument('out')
     ap.add_argument('--pages', type=int, default=40)
     ap.add_argument('--max', type=int, default=2500)
+    ap.add_argument('--all-topics', action='store_true', help='also crawl every topic listed on lichess.org/study/topic')
     a = ap.parse_args()
+    topics = list(TOPICS)
+    if a.all_topics:
+        html = get('https://lichess.org/study/topic') or ''
+        for t in re.findall(r'href="/study/topic/([^"/]+)', html):
+            t = urllib.parse.unquote(t)
+            if t not in topics and not re.search(r'puzzle|trap|mate|checkmate', t, re.I):
+                topics.append(t)
+        print(f'{len(topics)} topics', flush=True)
     os.makedirs(a.out, exist_ok=True)
     found = []
     seen = set()
@@ -57,7 +66,7 @@ def main():
             seen.add(i); found.append(i)
         return len(new)
 
-    sources = [f'https://lichess.org/study/all/popular?page={{}}'] + [f'https://lichess.org/study/topic/{urllib.parse.quote(t)}/popular?page={{}}' for t in TOPICS]
+    sources = [f'https://lichess.org/study/all/popular?page={{}}'] + [f'https://lichess.org/study/topic/{urllib.parse.quote(t)}/popular?page={{}}' for t in topics]
     for src in sources:
         empty = 0
         for page in range(1, a.pages + 1):
