@@ -1,0 +1,62 @@
+# Plans lab: sample Lichess game files (CC0) across every opening, label the positions with Stockfish 11's evaluation parts,
+# and collect real mistakes (big evaluation swings) from games that carry Lichess's own engine evaluations.
+name: "Plans lab: all-openings engine labels and mistakes"
+
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: 'Months, comma separated'
+        default: '2024-01,2024-02,2024-03,2024-04,2024-05,2024-06,2024-07,2024-08,2024-09,2024-10,2024-11,2024-12'
+      per_month:
+        description: 'Positions per month'
+        default: '12000'
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      months: ${{ steps.m.outputs.months }}
+    steps:
+      - id: m
+        env:
+          MONTHS: ${{ inputs.months }}
+        run: python3 -c "import json,os; ms=[m.strip() for m in os.environ['MONTHS'].split(',') if m.strip()]; open(os.environ['GITHUB_OUTPUT'],'a').write('months='+json.dumps(ms)+'\n')"
+  month:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        month: ${{ fromJson(needs.plan.outputs.months) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install chess zstandard
+      - name: Build Stockfish 11
+        run: |
+          git clone --depth 1 --branch sf_11 https://github.com/official-stockfish/Stockfish.git sf
+          cd sf/src && make -j4 build ARCH=x86-64-modern COMP=gcc > /dev/null && cp stockfish ../../stockfish
+      - name: Sample the month
+        env:
+          MONTH: ${{ matrix.month }}
+          N: ${{ inputs.per_month }}
+        run: |
+          python tools/plans/dump_sample.py --url "https://database.lichess.org/standard/lichess_db_standard_rated_${MONTH}.pgn.zst" \
+            --positions "pos-${MONTH}.jsonl.gz" --swings "swings-${MONTH}.jsonl.gz" --n "${N}" --max-swings 30000 --minutes 100 --seed "${MONTH//-/}"
+      - name: Evaluation parts
+        env:
+          MONTH: ${{ matrix.month }}
+        run: |
+          python tools/plans/engine_terms.py "pos-${MONTH}.jsonl.gz" --out "terms-${MONTH}.jsonl" --depth 12 --engine ./stockfish --minutes 200
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plans-dump-${{ matrix.month }}
+          path: |
+            terms-${{ matrix.month }}.jsonl
+            swings-${{ matrix.month }}.jsonl.gz
+          retention-days: 30
