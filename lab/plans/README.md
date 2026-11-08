@@ -46,3 +46,29 @@ Run order, for the record:
    baseline (castling sides alone). Test it on lines built to be attacking (Yugoslav Dragon, Mar del Plata, English Attack).
 5. **Engine check.** Use the engine's long best lines to confirm or refute what the statistics suggest.
 6. **Teaching format.** Plan cards, a quiz, and a play-it-out mode. Only here do we touch the app.
+
+## The idea pipeline (November 2026)
+
+What the app's Ideas view, Plan drill and "What now?" are built from, in order. Large data stays outside git; see `data/CORPUS.md`.
+
+1. **Training data** (`build_corpus.py`, `books_to_corpus.py`, `wikibooks.py`, `wikisource_books.py`, `lichess_studies.py`):
+   expert-labelled moves (Strategic Test Suite, WGM-reviewed positional puzzles), author comments from 13 public-domain books,
+   Wikibooks opening theory, Lichess studies and practice, ChessGPT's annotated games, MATE, Lichess puzzle themes. About one
+   million rows in one format, each with a trust level.
+2. **Engine view** (`engine_terms.py` in the cloud, Stockfish 11): the evaluation parts (king safety, mobility, pawns, space...)
+   before and after each move's eight-ply line; `term_labels.py` turns the changes into z-scores.
+3. **Borrowed brain** (`brain_embed.py` in the cloud): Maia-2's hidden layer for each labelled move. Leela's build failed on
+   GitHub's machines; Maia-3 is AGPL and engine-only, so neither is used.
+4. **Idea namer** (`namer2.py`): one model per idea, trained on the expert labels plus lightly weighted comments, with
+   per-idea "not sure" thresholds. Judged on hidden expert answers (5-fold) and on book comments it never saw;
+   `out/DASHBOARD.md` compares every version. In use: 74% top idea, 94% in the top three on hidden expert answers.
+5. **Plans** (`plan_clusters.py`, `assign_plans.py`): 24 recurring plans found by grouping engine lines by what they change
+   and how the pieces move; names in `out/plan-names.json`.
+6. **App data** (`build_ideas.py`, `build_all_ideas.py`): the King's Indian set (`data/plans/ideas.json`) and every opening's
+   common positions (`data/plans/ideas/s000-s255.json`).
+7. **Your verdicts** (Ideas view, Right / Partly / Wrong / pick the idea): `retrain.py --verdicts FILE --data DATA_DIR` folds
+   them in and rebuilds everything.
+
+Findings worth remembering: guessing the plan from the position alone fails (20% on STS); naming the idea behind a good move
+works (about 75%). Stockfish's evaluation parts alone agree with people only a little above chance. No idea is clearly
+"risky" in 30,000 real mistakes; mistakes are tactical (`out/risky-ideas.md`).
