@@ -55,6 +55,8 @@ def rel_rank(sq, color):
 def piece_filter(desc):
     """'QKT' -> (KNIGHT, side 'Q'); 'KBP' -> (PAWN, files (5,)); 'P' -> (PAWN, None)."""
     d = desc
+    if not d:
+        return None, None, None
     if d.endswith('P') and len(d) > 1:              # a pawn named by its file: KP, QBP, KTP, RP
         f = d[:-1]
         if f in FILE_OF:
@@ -307,7 +309,10 @@ def main():
     with open(a.out, 'w', encoding='utf-8') as out:
         for name, src in (('capablanca-chess-fundamentals.txt', 'book-capablanca'), ('lasker-chess-strategy.txt', 'book-lasker'),
                           ('pg16377.txt', 'book-staunton'), ('pg4913.txt', 'book-lasker-checkers'), ('pg34180.txt', 'book-morphy'),
-                          ('pg4902.txt', 'book-bird'), ('pg55278.txt', 'book-young'), ('pg78804.txt', 'book-philidor')):
+                          ('pg4902.txt', 'book-bird'), ('pg55278.txt', 'book-young'), ('pg78804.txt', 'book-philidor'),
+                          ('ia-middlegameinches00znos.txt', 'book-znosko-middle-game'), ('ia-commonsenseinche00laskrich.txt', 'book-lasker-common-sense'),
+                          ('ia-principlesofches00masoiala.txt', 'book-mason-principles'), ('ia-artofchess00maso.txt', 'book-mason-art'),
+                          ('ia-modernchessinstr00steirich.txt', 'book-steinitz-instructor')):
             path = os.path.join(a.books, name)
             if not os.path.exists(path):
                 continue

@@ -17,11 +17,13 @@ const FB_KEY = 'opening-reps.idea-verdicts.v1';
 const verdicts = (() => { try { return JSON.parse(localStorage.getItem(FB_KEY)) || {}; } catch (e) { return {}; } })();
 const saveVerdicts = () => { try { localStorage.setItem(FB_KEY, JSON.stringify(verdicts)); } catch (e) { /* private mode */ } };
 const vKey = (fen, uci) => fen.split(' ').slice(0, 4).join(' ') + '|' + uci;
+const CHOICES = [['right', 'Right', '1'], ['partly', 'Partly', '2'], ['wrong', 'Wrong', '3'], ['skip', "Can't tell", '4']];
 function tally() {
-  const v = Object.values(verdicts);
-  const right = v.filter((x) => x.verdict === 'right').length;
-  return { n: v.length, right };
+  const v = Object.values(verdicts).filter((x) => x.verdict !== 'skip');
+  const right = v.filter((x) => x.verdict === 'right').length, partly = v.filter((x) => x.verdict === 'partly').length;
+  return { n: v.length, all: Object.keys(verdicts).length, right, partly, score: v.length ? (right + 0.5 * partly) / v.length : 0 };
 }
+let focus = null;           // the move the quick keys apply to: the first one not judged yet
 const view = { side: 'b', sel: null };
 
 async function load() {
@@ -83,30 +85,53 @@ function render() {
   $('idPick').innerHTML = list.map((x, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${esc(lineText(x.line))} (${x.games.toLocaleString()} games)</option>`).join('');
   $('idLine').textContent = fullLine(p.line);
   board.set({ pieces: pieces(p.fen), orientation: view.side, lastMove: null });
-  drawArrows(p, null);
+  const firstOpen = p.ideas.flatMap((g) => g.moves).find((m) => !verdicts[vKey(p.fen, m.uci)]);
+  focus = firstOpen ? firstOpen.uci : null;
+  drawArrows(p, focus);
   const ideas = p.ideas.map((g, k) => `<div class="id-idea">
       <div class="id-head"><span class="id-dot" style="background:${COLORS[k % COLORS.length]}"></span><b>${esc(g.name)}</b> <span class="muted small">${g.moves.length} good move${g.moves.length > 1 ? 's' : ''}</span></div>
       ${g.moves.map((m) => {
         const v = verdicts[vKey(p.fen, m.uci)];
         const also = (m.also || []).map((x) => esc(x.name)).join(', ');
-        return `<div class="id-move" data-uci="${m.uci}"><b>${esc(m.san)}</b> <span class="muted">${pawns(m.cp)}</span>${m.conf < 0.45 ? ' <span class="id-unsure" title="The idea namer is not sure about this label">label unsure</span>' : ''}
+        const prep = m.prepares ? ` <span class="id-prep">preparing ${esc(m.prepares)}</span>` : '';
+        return `<div class="id-move${focus === m.uci ? ' focus' : ''}" data-uci="${m.uci}"><b>${esc(m.san)}</b>${prep} <span class="muted">${pawns(m.cp)}</span>${m.conf < 0.45 ? ' <span class="id-unsure" title="The idea namer is not sure about this label">label unsure</span>' : ''}
         ${also ? `<span class="muted small"> · also: ${also}</span>` : ''}
         <span class="id-pv muted small">${esc(m.pv.join(' '))}</span>
         <span class="id-judge"><button type="button" class="ghost id-play" data-uci="${m.uci}">Play the line</button>
-          <span class="muted small">Is “${esc(g.name)}” right for ${esc(m.san)}?</span>
-          <button type="button" class="ghost id-v${v && v.verdict === 'right' ? ' on' : ''}" data-v="right" data-uci="${m.uci}" data-idea="${g.theme}">Right</button>
-          <button type="button" class="ghost id-v${v && v.verdict === 'wrong' ? ' on' : ''}" data-v="wrong" data-uci="${m.uci}" data-idea="${g.theme}">Wrong</button></span></div>`;
+          <span class="muted small">“${esc(g.name)}” for ${esc(m.san)}${m.prepares ? ' (via ' + esc(m.prepares) + ')' : ''}?</span>
+          ${CHOICES.map(([k, label, key]) => `<button type="button" class="ghost id-v${v && v.verdict === k ? ' on' : ''}" data-v="${k}" data-uci="${m.uci}" data-idea="${g.theme}" title="Key ${key}">${label} <span class="id-key">${key}</span></button>`).join('')}</span></div>`;
       }).join('')}
     </div>`).join('');
   const played = p.played.map((m) => `<tr><td><b>${esc(m.san)}</b></td><td>${Math.round(m.share * 100)}%</td><td class="${m.adj > 0.01 ? 'good' : m.adj < -0.01 ? 'bad' : ''}">${m.adj >= 0 ? '+' : '−'}${Math.abs(m.adj * 100).toFixed(1)}</td><td>${esc(m.name)}${m.conf < 0.45 ? ' <span class="id-unsure">unsure</span>' : ''}</td><td>${m.engine_good ? '✓' : '<span class="muted">not in the engine\'s top moves</span>'}</td></tr>`).join('');
   const t = tally();
   $('idBody').innerHTML = `
-    <div class="id-tally">Your verdicts so far: <b>${t.n}</b>${t.n ? `, the namer was right on <b>${Math.round(100 * t.right / t.n)}%</b>` : ''}. <button type="button" class="ghost" id="idExport"${t.n ? '' : ' disabled'}>Save my verdicts as a file</button></div>
+    <div class="id-tally">Your verdicts: <b>${t.all}</b>${t.n ? ` · namer score <b>${Math.round(100 * t.score)}%</b> (right ${t.right}, partly ${t.partly}, wrong ${t.n - t.right - t.partly})` : ''}.
+      <span class="muted small">Quick keys: 1 right, 2 partly, 3 wrong, 4 can't tell. The highlighted move is next, and it moves on by itself.</span>
+      <button type="button" class="ghost" id="idExport"${t.all ? '' : ' disabled'}>Save my verdicts as a file</button></div>
     <p class="muted small">Engine evaluation of the best move: ${pawns(p.best_cp)} for the side to move. ${p.games.toLocaleString()} real games reached this position.</p>
     <h3 class="ad-h">The engine's good moves, grouped by idea</h3>${ideas}
     <h3 class="ad-h">What real players chose</h3>
     <div class="tablewrap"><table class="id-table"><thead><tr><th>Move</th><th>Chosen</th><th>Result vs rating</th><th>Idea</th><th>Engine</th></tr></thead><tbody>${played}</tbody></table></div>
     <p class="muted small th-note">Good moves are those within half a pawn of the engine's best (Stockfish, depth 18). Each move's idea is named by a model trained on 1,500 expert-labelled positions (the Strategic Test Suite); on positions it had not seen, it named the right idea about 80% of the time, so a label can be wrong. "Result vs rating" is how games with that move scored against what the ratings predicted, in points.</p>`;
+}
+
+function nextOpenPosition() {
+  for (let k = 1; k <= list.length; k++) {
+    const i = (cur + k) % list.length, p = list[i];
+    if (p.ideas.some((g) => g.moves.some((m) => !verdicts[vKey(p.fen, m.uci)]))) return i;
+  }
+  return cur;
+}
+
+function record(uci, idea, verdict) {
+  const p = list[cur];
+  verdicts[vKey(p.fen, uci)] = { fen: p.fen, uci, idea, verdict, at: new Date().toISOString() };
+  saveVerdicts();
+  const left = p.ideas.some((g) => g.moves.some((m) => !verdicts[vKey(p.fen, m.uci)]));
+  if (!left) cur = nextOpenPosition();
+  render();
+  const el = document.querySelector('.id-move.focus');
+  if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 export async function showIdeas() {
@@ -129,6 +154,16 @@ export async function showIdeas() {
       list.forEach((p, i) => { const s2 = score(p); if (s2 < bestS) { bestS = s2; best = i; } });
       cur = best; render();
     });
+    // quick keys 1-4 judge the highlighted move, only while the Ideas view is on screen and you are not typing
+    document.addEventListener('keydown', (e) => {
+      if ($('plIdeasPane').hidden || $('tab-plans').hidden || !focus || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return;
+      const c = CHOICES.find(([, , key]) => key === e.key);
+      if (!c) return;
+      const p = list[cur];
+      const g = p.ideas.find((x) => x.moves.some((m) => m.uci === focus));
+      if (g) { e.preventDefault(); record(focus, g.theme, c[0]); }
+    });
     $('idBody').addEventListener('click', (e) => {
       const p = list[cur];
       if (e.target.id === 'idExport') {
@@ -137,10 +172,7 @@ export async function showIdeas() {
         return;
       }
       const vb = e.target.closest('.id-v');
-      if (vb) {
-        verdicts[vKey(p.fen, vb.dataset.uci)] = { fen: p.fen, uci: vb.dataset.uci, idea: vb.dataset.idea, verdict: vb.dataset.v, at: new Date().toISOString() };
-        saveVerdicts(); render(); return;
-      }
+      if (vb) { record(vb.dataset.uci, vb.dataset.idea, vb.dataset.v); return; }
       const play = e.target.closest('.id-play');
       if (play) { const m = p.ideas.flatMap((g) => g.moves).find((x) => x.uci === play.dataset.uci); if (m) playLine(p, m); return; }
       const mv = e.target.closest('.id-move');

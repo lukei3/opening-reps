@@ -2,10 +2,10 @@
 
 | Idea | Good moves given this idea |
 |---|---|
-| No clear idea | 968 |
+| No clear idea | 986 |
 | Push the kingside pawns | 98 |
-| Pawn break: undermine their pawns | 67 |
 | Take an open file or diagonal | 61 |
+| Pawn break: undermine their pawns | 49 |
 | Trade pieces | 45 |
 | Pawn play in the centre | 41 |
 | Avoid a pointless trade | 26 |

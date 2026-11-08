@@ -146,10 +146,10 @@ def main():
     if a.verdicts:
         for v in json.load(open(a.verdicts, encoding='utf-8')):
             x = features(v['fen'], v['uci'])
-            if x is None or v.get('idea') in (None, 'unclear'):
+            if x is None or v.get('idea') in (None, 'unclear') or v.get('verdict') == 'skip':
                 continue
             X.append(x); src.append('your-verdicts')
-            if v['verdict'] == 'right':
+            if v['verdict'] in ('right', 'partly'):
                 Y.append({v['idea']}); neg.append(set())
             else:
                 Y.append(set()); neg.append({v['idea']})

@@ -29,6 +29,57 @@ NAMES = {
     'material': 'Win material', 'sacrifice': 'Sacrifice', 'passed_pawn': 'Passed pawn', 'bishop_pair': 'Bishop pair', 'minority_attack': 'Minority attack',
 }
 GOOD_CP = 50
+
+
+def fits(board, mv, idea):
+    """Does this move itself carry out the idea? (A pawn break needs a pawn move that hits a pawn, an outpost a knight move...)"""
+    pt = board.piece_type_at(mv.from_square)
+    f = chess.square_file(mv.to_square)
+    me = board.turn
+    if idea == 'pawn_break':
+        if pt != chess.PAWN:
+            return False
+        after = board.copy(stack=False); after.push(mv)
+        return board.is_capture(mv) or any(after.piece_at(s) == chess.Piece(chess.PAWN, not me) for s in after.attacks(mv.to_square))
+    if idea == 'kingside_pawns':
+        return pt == chess.PAWN and f >= 5
+    if idea == 'queenside_pawns':
+        return pt == chess.PAWN and f <= 2
+    if idea in ('centre_pawns', 'fix_structure'):
+        return pt == chess.PAWN
+    if idea == 'knight_outpost':
+        return pt == chess.KNIGHT
+    if idea in ('open_file', 'seventh_rank'):
+        return pt in (chess.ROOK, chess.QUEEN) or (idea == 'open_file' and pt == chess.BISHOP)
+    if idea == 'development':
+        return pt in (chess.KNIGHT, chess.BISHOP) or board.is_castling(mv)
+    if idea == 'king_activity':
+        return pt == chess.KING and not board.is_castling(mv)
+    if idea in ('bishop_vs_knight',):
+        cap = board.piece_type_at(mv.to_square)
+        return board.is_capture(mv) and {pt, cap} == {chess.BISHOP, chess.KNIGHT}
+    if idea in ('recapture',):
+        return board.is_capture(mv)
+    return True                     # ideas with no simple move test (space, initiative, prophylaxis, trades...) are not checked
+
+
+def place_idea(board, pv, idea):
+    """Keep the idea on the move if the move fits it; otherwise find the move later in the engine line (same side) that does,
+    so the label reads '...Kh8, preparing ...f5'. Returns (idea or 'unclear', SAN of the move it prepares or None)."""
+    b = board.copy()
+    moves = [chess.Move.from_uci(u) for u in pv]
+    if not moves or moves[0] not in b.legal_moves:
+        return 'unclear', None
+    if fits(b, moves[0], idea):
+        return idea, None
+    me = b.turn
+    for k, mv in enumerate(moves[:7]):
+        if mv not in b.legal_moves:
+            break
+        if k > 0 and k % 2 == 0 and b.turn == me and fits(b, mv, idea):
+            return idea, b.san(mv)
+        b.push(mv)
+    return 'unclear', None
 SURE = 0.30          # below this the namer says it has no clear idea instead of guessing
 
 
@@ -74,8 +125,11 @@ def main():
         groups = collections.OrderedDict()
         for (l, _), top in zip(keep, named):
             idea, p = top[0]
+            prepares = None
             if p < SURE:
                 idea = 'unclear'
+            else:
+                idea, prepares = place_idea(board, l['pv'], idea)
             pv_board = board.copy(); sans = []
             for u in l['pv'][:8]:
                 mv = chess.Move.from_uci(u)
@@ -85,7 +139,7 @@ def main():
             g = groups.setdefault(idea, {'theme': idea, 'name': 'No clear idea (the namer is not sure)' if idea == 'unclear' else NAMES.get(idea, idea), 'moves': []})
             g['moves'].append({'san': sans[0] if sans else l['uci'], 'uci': l['uci'], 'cp': sign * l['cp'], 'conf': round(p, 2),
                                'also': [{'theme': t, 'name': NAMES.get(t, t), 'p': round(q, 2)} for t, q in top[1:] if q >= 0.35],
-                               'pv': sans})
+                               'pv': sans, 'prepares': prepares})
             use[idea] += 1
         legal = {board.san(mv): mv for mv in board.legal_moves}
         pm = [(d, legal[d['san']]) for d in pos['played'] if d['san'] in legal]
