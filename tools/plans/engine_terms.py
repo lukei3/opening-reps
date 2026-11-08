@@ -113,17 +113,27 @@ def main():
                 board = chess.Board(r['fen'])
             except ValueError:
                 continue
-            start = sf.evaluate(board.fen())
-            if r.get('uci'):
-                if chess.Move.from_uci(r['uci']) not in board.legal_moves:
-                    continue
-                firsts = [(r['uci'], None)]
-            else:
-                firsts = [(x['pv'][0], x['cp']) for x in sf.search(board.fen(), a.depth, a.multipv) if x['pv']]
+            if not board.is_valid() or board.is_game_over():
+                continue                       # composed or broken positions crash Stockfish 11
+            try:
+                start = sf.evaluate(board.fen())
+                if r.get('uci'):
+                    if chess.Move.from_uci(r['uci']) not in board.legal_moves:
+                        continue
+                    firsts = [(r['uci'], None)]
+                else:
+                    firsts = [(x['pv'][0], x['cp']) for x in sf.search(board.fen(), a.depth, a.multipv) if x['pv']]
+            except RuntimeError:
+                sf = SF(a.engine)              # the engine died on this position: restart it and move on
+                continue
             for uci, cp in firsts:
-                line, after2, end = run_line(sf, board, uci, a.depth)
-                rec = {'id': r.get('id'), 'fen': r['fen'], 'uci': uci, 'cp': cp, 'line': line, 'start': start,
-                       'after2': sf.evaluate(after2) if after2 else None, 'end': sf.evaluate(end)}
+                try:
+                    line, after2, end = run_line(sf, board, uci, a.depth)
+                    rec = {'id': r.get('id'), 'fen': r['fen'], 'uci': uci, 'cp': cp, 'line': line, 'start': start,
+                           'after2': sf.evaluate(after2) if after2 else None, 'end': sf.evaluate(end)}
+                except RuntimeError:
+                    sf = SF(a.engine)
+                    continue
                 out.write(json.dumps(rec, separators=(',', ':')) + '\n')
             n += 1
             if n % 200 == 0:
