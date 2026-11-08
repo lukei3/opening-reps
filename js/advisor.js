@@ -238,7 +238,7 @@ export function plans(c) {
 const VAL = { p: 100, n: 300, b: 300, r: 500, q: 900, k: 0 };
 const material = (c, col) => { let s = 0; for (const r of c.board()) for (const p of r) if (p && p.color === col) s += VAL[p.type]; return s; };
 
-function describeLine(fen, pv, me) {
+export function describeLine(fen, pv, me) {
   const c = new Chess(fen), foe = me === 'w' ? 'b' : 'w';
   let fk = null; for (const r of c.board()) for (const p of r) if (p && p.type === 'k' && p.color === foe) fk = p.square;
   const kWing = wingOf(fk.charCodeAt(0) - 97);
@@ -261,7 +261,7 @@ function describeLine(fen, pv, me) {
   d.gain = (material(c, me) - material(c, foe)) - m0;
   return d;
 }
-function ideaOf(d) {
+export function ideaOf(d) {
   if (d.gain >= 100) return 'Win material or a tactic';
   if (d.pawnKW >= 2 || d.near >= 2) return 'Attack the enemy king';
   const o = Object.entries(d.other).sort((a, b) => b[1] - a[1])[0];
