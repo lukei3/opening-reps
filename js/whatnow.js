@@ -45,6 +45,15 @@ async function fromShards(key) {
   return (await shardCache.get(s))[key] || null;
 }
 
+/** The ideas position for `fen`: the position itself, or the nearest one along the book's usual moves. */
+export async function resolveIdeas(fen) {
+  const map = await load();
+  const key = fen.split(' ').slice(0, 4).join(' ');
+  const p = map.get(key) || await fromShards(key);
+  if (p && p.ideas.some((g) => g.theme !== 'unclear')) return { p, via: [] };
+  return nearby(fen, map);
+}
+
 /** Fill `box` with the ideas for `fen`, or leave it empty if this position has none yet. */
 export async function showWhatNow(box, fen) {
   if (!box) return;

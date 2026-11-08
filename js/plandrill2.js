@@ -5,6 +5,8 @@
 
 import { Chess } from '../lib/chess.js';
 import { Board } from './board.js';
+import { S } from './store.js';
+import { resolveIdeas } from './whatnow.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -26,18 +28,29 @@ async function buildPool() {
   const d = await fetch('data/plans/ideas.json').then((r) => r.json());
   const allPlans = new Set();
   const out = [];
-  for (const p of d.positions) {
+  // positions from your own finished Train lines come first (the last 150), then the King's Indian set
+  const mine = [];
+  const seen = new Set();
+  for (const h of (S().history || []).slice(-150).reverse()) {
+    if (!h.fen) continue;
+    try {
+      const { p } = await resolveIdeas(h.fen);
+      if (p && !seen.has(p.fen)) { seen.add(p.fen); mine.push({ ...p, mine: true }); }
+    } catch (e) { /* skip */ }
+  }
+  for (const p of [...mine, ...d.positions]) {
     const moves = p.ideas.flatMap((g) => g.moves).filter((m) => m.plan);
     moves.forEach((m) => allPlans.add(m.plan));
     const plans = [...new Set(moves.map((m) => m.plan))];
-    if (plans.length) out.push({ ...p, plans, moves });
+    if (plans.length && !out.some((o) => o.fen === p.fen)) out.push({ ...p, plans, moves });
   }
   return { positions: out, allPlans: [...allPlans] };
 }
 
 function due() {
   const now = Date.now();
-  const unseen = pool.positions.filter((p) => !state[p.fen]);
+  const mineUnseen = pool.positions.filter((p) => p.mine && !state[p.fen]);
+  const unseen = mineUnseen.length ? mineUnseen : pool.positions.filter((p) => !state[p.fen]);
   const ready = pool.positions.filter((p) => state[p.fen] && state[p.fen].due <= now).sort((a, b) => state[a.fen].due - state[b.fen].due);
   return ready[0] || unseen[Math.floor(Math.random() * unseen.length)] || pool.positions[Math.floor(Math.random() * pool.positions.length)];
 }
@@ -81,7 +94,8 @@ function renderStats() {
   const seen = Object.keys(state).length;
   const now = Date.now();
   const dueN = Object.values(state).filter((s) => s.due <= now).length;
-  $('pdStats').textContent = `${pool.positions.length} positions · seen ${seen} · due now ${dueN}`;
+  const mine = pool.positions.filter((p) => p.mine).length;
+  $('pdStats').textContent = `${pool.positions.length} positions (${mine} from your own lines) · seen ${seen} · due now ${dueN}`;
 }
 
 export async function showPlanDrill() {

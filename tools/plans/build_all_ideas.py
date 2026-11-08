@@ -39,7 +39,16 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--brain', nargs='*', default=[])
     ap.add_argument('--engine-labels', default='')
+    ap.add_argument('--plans', default='', help='assign_plans.py output: the plan group of each engine line')
+    ap.add_argument('--plan-names', default='lab/plans/out/plan-names.json')
     a = ap.parse_args()
+    plan_of = {}
+    if a.plans:
+        import gzip as _gz
+        names = json.load(open(a.plan_names, encoding='utf-8'))
+        for line in _gz.open(a.plans, 'rt', encoding='utf-8'):
+            r = json.loads(line)
+            plan_of[' '.join(r['fen'].split()[:4]) + '|' + r['uci']] = names.get(str(r['group']))
     m = pickle.load(open(a.model, 'rb'))
     if m.get('learned'):
         namer2.load_learned(a.brain, a.engine_labels)
@@ -80,7 +89,16 @@ def main():
                     break
                 sans.append(b.san(mv)); b.push(mv)
             g = groups.setdefault(idea, {'theme': idea, 'name': 'No clear idea (the namer is not sure)' if idea == 'unclear' else NAMES.get(idea, idea), 'moves': []})
-            g['moves'].append({'san': sans[0] if sans else l['uci'], 'uci': l['uci'], 'cp': sign * l['cp'], 'conf': round(p, 2), 'pv': sans, 'prepares': prepares})
+            mv = {'san': sans[0] if sans else l['uci'], 'uci': l['uci'], 'cp': sign * l['cp'], 'conf': round(p, 2)}
+            # keep the files small: the line only for moves with a named idea, and only fields that carry something
+            if idea != 'unclear':
+                mv['pv'] = sans[:6]
+            if prepares:
+                mv['prepares'] = prepares
+            plan = plan_of.get(' '.join(fen.split()[:4]) + '|' + l['uci'])
+            if plan:
+                mv['plan'] = plan
+            g['moves'].append(mv)
             use[idea] += 1
         if 'unclear' in groups:
             groups.move_to_end('unclear')

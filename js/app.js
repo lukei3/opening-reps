@@ -1002,7 +1002,7 @@ function finish(msg, failed = false) {
   setStatus(failed ? msg : 'Line finished.', failed ? 'bad' : 'good');
   if (!failed && G.mistakes === 0) play('done');
   if (!failed && G.decisions > 0) {
-    S().history.push({ t: Date.now(), opening: G.op.id, moves: G.chess.history().length, mistakes: G.mistakes, decisions: G.decisions });
+    S().history.push({ t: Date.now(), opening: G.op.id, moves: G.chess.history().length, mistakes: G.mistakes, decisions: G.decisions, fen: G.chess.fen() });
     store.save();
   }
   const clean = G.mistakes === 0;
