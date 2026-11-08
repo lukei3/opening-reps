@@ -1,0 +1,55 @@
+# Plans lab: what the Maia-2 network (MIT) and Leela Chess Zero (GPL, built from source) see in each labelled move.
+name: "Plans lab: chess brain features"
+
+on:
+  workflow_dispatch:
+    inputs:
+      input:
+        description: 'Input file in the repo'
+        default: 'lab/plans/data/brain-input.jsonl.gz'
+
+jobs:
+  brain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Maia-2 (CPU)
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install maia2 chess
+      - name: Build Leela Chess Zero with Python bindings (best effort)
+        continue-on-error: true
+        run: |
+          sudo apt-get update && sudo apt-get install -y meson ninja-build libopenblas-dev libeigen3-dev zlib1g-dev
+          pip install meson ninja pybind11
+          git clone --depth 1 --recurse-submodules https://github.com/LeelaChessZero/lc0.git lc0
+          cd lc0
+          pip install . || (meson setup build --buildtype=release -Dpython_bindings=true -Dgtest=false && ninja -C build && cp build/*.so $(python -c "import site;print(site.getsitepackages()[0])")/)
+          cd ..
+          for u in https://storage.lczero.org/files/networks-contrib/t1-256x10-distilled-swa-2432500.pb.gz https://storage.lczero.org/files/networks-contrib/t1-smolgen-512x15x8h-distilled-swa-3395000.pb.gz; do
+            curl -sfL -o net.pb.gz "$u" && break
+          done
+          ls -la net.pb.gz
+          python -c "from lczero.backends import Weights; Weights('net.pb.gz'); print('leela ok')"
+      - name: Features
+        env:
+          INPUT: ${{ inputs.input }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          LEELA=""
+          if python -c "import lczero.backends" 2>/dev/null && [ -s net.pb.gz ]; then LEELA="--leela net.pb.gz"; fi
+          python tools/plans/brain_embed.py "${INPUT}" --out "brain-${SHARD}.npz" --shard "${SHARD}" --shards 8 ${LEELA} --minutes 320
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plans-brain-${{ matrix.shard }}
+          path: brain-${{ matrix.shard }}.npz
+          retention-days: 30
