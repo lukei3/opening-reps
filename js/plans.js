@@ -6,6 +6,7 @@ import { Board } from './board.js';
 import { showAdvisor, openFen } from './advisor.js';
 import { showDrill } from './plandrill.js';
 import { showThemes } from './themes.js';
+import { showIdeas } from './ideas.js';
 
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -102,7 +103,7 @@ function renderCard() {
   drawBoard();
 }
 
-let mode = 'themes', modeWired = false;   // the advisor and the drill are parked (their chips are hidden) until they are reworked
+let mode = 'ideas', modeWired = false;   // the advisor and the drill are parked (their chips are hidden) until they are reworked
 export function showPlans() {
   if (!modeWired) {
     modeWired = true;
@@ -114,7 +115,8 @@ export function showPlans() {
   $('plDrillPane').hidden = mode !== 'drill';
   $('plStatsPane').hidden = mode !== 'stats';
   $('plThemesPane').hidden = mode !== 'themes';
-  if (mode === 'adv') showAdvisor(); else if (mode === 'drill') showDrill(); else if (mode === 'themes') showThemes(); else showStats();
+  $('plIdeasPane').hidden = mode !== 'ideas';
+  if (mode === 'adv') showAdvisor(); else if (mode === 'drill') showDrill(); else if (mode === 'themes') showThemes(); else if (mode === 'ideas') showIdeas(); else showStats();
 }
 
 async function showStats() {

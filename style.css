@@ -924,3 +924,23 @@ table.ana th:nth-child(2) { text-align: center; }
 .th-more h4 { margin: 12px 0 4px; font-size: 13px; }
 .th-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 3px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
 .th-note { margin-top: 16px; line-height: 1.5; }
+
+/* ---------- Ideas ---------- */
+#idSide .chip { flex: 0 1 auto; }
+#idPick { flex: 1 1 300px; min-width: 0; }
+.id-idea { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; }
+.id-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.id-move { padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; font-size: 13.5px; line-height: 1.5; }
+.id-move:hover { background: rgba(255, 255, 255, 0.04); }
+.id-pv { display: block; }
+.id-play { font-size: 12px; padding: 3px 8px; margin-top: 2px; }
+.id-unsure { font-size: 11px; color: var(--warn); }
+.id-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.id-table th, .id-table td { text-align: left; padding: 5px 6px; border-top: 1px solid var(--line); }
+.id-table td.good { color: var(--good); } .id-table td.bad { color: var(--bad); }
+.id-judge { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.id-v { font-size: 12px; padding: 3px 10px; }
+.id-v.on[data-v="right"] { border-color: var(--good); color: var(--good); }
+.id-v.on[data-v="wrong"] { border-color: var(--bad); color: var(--bad); }
+.id-tally { font-size: 13px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.id-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }

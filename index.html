@@ -243,8 +243,17 @@
 
   <!-- PROGRESS -->
   <section id="tab-plans" hidden>
-    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip" data-mode="adv" hidden>Plan advisor</button><button type="button" class="chip" data-mode="drill" hidden>Plan drill</button><button type="button" class="chip on" data-mode="themes">Themes</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
-    <div class="pl-wrap" id="plThemesPane">
+    <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip" data-mode="adv" hidden>Plan advisor</button><button type="button" class="chip" data-mode="drill" hidden>Plan drill</button><button type="button" class="chip on" data-mode="ideas">Ideas</button><button type="button" class="chip" data-mode="themes">Structures</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
+    <div class="pl-wrap" id="plIdeasPane">
+      <div class="sthead"><h2>Ideas in the King's Indian</h2><p class="muted small">The common positions players reach at moves 8 to 14. For each, the engine's good moves grouped by the idea they serve, and what real players chose. Tap a move to see it, or play its line.</p></div>
+      <div id="idSide" class="chips"></div>
+      <div class="ad-ctl"><select id="idPick" aria-label="Position"></select><button id="idRandom" type="button" class="ghost">Random position</button></div>
+      <div class="ad-grid">
+        <div><div class="board-wrap"><div id="idBoard"></div></div><p class="muted small" id="idLine"></p></div>
+        <div id="idBody"></div>
+      </div>
+    </div>
+    <div class="pl-wrap" id="plThemesPane" hidden>
       <div class="sthead"><h2>Opening themes</h2><p class="muted small">What each King's Indian structure is about: the ideas that keep coming up in real games, and the mistakes. Pick a structure, then tap an idea to see where it happens on the board.</p></div>
       <div id="thPicker" class="chips"></div>
       <div id="thSide" class="chips"></div>
