@@ -24,7 +24,31 @@ function tally() {
   return { n: v.length, all: Object.keys(verdicts).length, right, partly, score: v.length ? (right + 0.5 * partly) / v.length : 0 };
 }
 let focus = null;           // the move the quick keys apply to: the first one not judged yet
-const view = { side: 'b', sel: null };
+const view = { side: 'b', sel: null, source: 'kid' };
+// "Any opening": positions from the 1.5-billion-game book's ideas files, picked from your Train board, at random, or pasted
+const anyList = [];
+const shardCache = new Map();
+function shardOf(key, n = 256) {
+  let h = 5381;
+  for (const ch of new TextEncoder().encode(key)) h = (Math.imul(h, 33) ^ ch) >>> 0;
+  return h % n;
+}
+function shard(s) {
+  if (!shardCache.has(s)) shardCache.set(s, fetch(`data/plans/ideas/s${String(s).padStart(3, '0')}.json`).then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+  return shardCache.get(s);
+}
+async function anyPosition(fen) {
+  const key = fen.split(' ').slice(0, 4).join(' ');
+  const kid = data.positions.find((p) => p.fen.split(' ').slice(0, 4).join(' ') === key);
+  return kid || (await shard(shardOf(key)))[key] || null;
+}
+async function addAny(p, note) {
+  if (!p) { $('idMsg').textContent = note || 'No ideas for that position yet: it is not one of the common positions.'; return; }
+  $('idMsg').textContent = '';
+  anyList.unshift({ ...p, line: p.line || [] });
+  if (anyList.length > 30) anyList.pop();
+  cur = 0; render();
+}
 
 async function load() {
   if (data) return data;
@@ -46,7 +70,7 @@ function pieces(fen) {
   return m;
 }
 
-function filtered() { return data.positions.filter((p) => p.side === view.side); }
+function filtered() { return view.source === 'any' ? anyList : data.positions.filter((p) => p.side === view.side); }
 
 function drawArrows(p, only) {
   const arrows = [];
@@ -81,9 +105,12 @@ function render() {
   if (!list.length) { $('idBody').innerHTML = '<p class="muted">No positions.</p>'; return; }
   cur = Math.min(cur, list.length - 1);
   const p = list[cur];
+  $('idSource').innerHTML = [['kid', "King's Indian (300 positions)"], ['any', 'Any opening (39,000 positions)']].map(([k, t]) => `<button type="button" class="chip${view.source === k ? ' on' : ''}" data-src="${k}">${t}</button>`).join('');
+  $('idAnyCtl').hidden = view.source !== 'any';
+  $('idSide').hidden = view.source === 'any';
   $('idSide').innerHTML = ['b', 'w'].map((k) => `<button type="button" class="chip${view.side === k ? ' on' : ''}" data-side="${k}">${k === 'b' ? 'Black to move' : 'White to move'}</button>`).join('');
-  $('idPick').innerHTML = list.map((x, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${esc(lineText(x.line))} (${x.games.toLocaleString()} games)</option>`).join('');
-  $('idLine').textContent = fullLine(p.line);
+  $('idPick').innerHTML = list.map((x, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${x.line && x.line.length ? esc(lineText(x.line)) : (x.side === 'w' ? 'White' : 'Black') + ' to move: ' + esc(x.fen.split(' ')[0].slice(0, 28)) + '…'}${x.games ? ` (${x.games.toLocaleString()} games)` : ''}</option>`).join('');
+  $('idLine').textContent = p.line && p.line.length ? fullLine(p.line) : 'A common position from the opening book.';
   board.set({ pieces: pieces(p.fen), orientation: view.side, lastMove: null });
   const firstOpen = p.ideas.flatMap((g) => g.moves).find((m) => !done(p, m));
   focus = firstOpen ? firstOpen.uci : null;
@@ -160,7 +187,30 @@ export async function showIdeas() {
     board.setEnabled(false);
     $('idSide').addEventListener('click', (e) => { const b = e.target.closest('[data-side]'); if (b) { view.side = b.dataset.side; cur = 0; render(); } });
     $('idPick').addEventListener('change', () => { cur = +$('idPick').value; render(); });
-    $('idRandom').addEventListener('click', () => { cur = Math.floor(Math.random() * list.length); render(); });
+    $('idSource').addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-src]'); if (!b) return;
+      view.source = b.dataset.src; cur = 0;
+      if (view.source === 'any' && !anyList.length) await randomAny(); else render();
+    });
+    const randomAny = async () => {
+      for (let tries = 0; tries < 6; tries++) {
+        const keys = Object.keys(await shard(Math.floor(Math.random() * 256)));
+        if (keys.length) { const s = await shard(shardOf(keys[0])); return addAny(s[keys[Math.floor(Math.random() * keys.length)]]); }
+      }
+      return addAny(null, 'The ideas for other openings are not on this computer yet.');
+    };
+    $('idAnyRandom').addEventListener('click', randomAny);
+    $('idAnyTrain').addEventListener('click', async () => {
+      const g = window.__trainer && window.__trainer.G;
+      if (!g || !g.chess) return addAny(null, 'Start a line in Train first.');
+      addAny(await anyPosition(g.chess.fen()));
+    });
+    $('idAnyFenGo').addEventListener('click', async () => {
+      const fen = $('idAnyFen').value.trim();
+      if (fen.split(' ').length < 4) return addAny(null, 'Paste a full position (FEN).');
+      addAny(await anyPosition(fen));
+    });
+    $('idRandom').addEventListener('click', () => { if (view.source === 'any') return randomAny(); cur = Math.floor(Math.random() * list.length); render(); });
     // Active learning: your verdicts teach the namer most where it is least sure, so offer those positions first.
     $('idUnsure').addEventListener('click', () => {
       const score = (p) => {

@@ -962,3 +962,6 @@ table.ana th:nth-child(2) { text-align: center; }
 .wn-fb.good { color: var(--good); } .wn-fb.bad { color: var(--bad); }
 
 .id-plan { font-size: 12px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
+
+#idSource .chip { flex: 0 1 auto; }
+#idAnyFen { flex: 1 1 220px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }

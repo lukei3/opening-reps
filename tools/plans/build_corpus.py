@@ -166,6 +166,8 @@ def do_mate(root, f, counts, limit):
 
 def pgn_comments(pgn_text, src, trust, f, counts, meta_extra=None):
     """Every comment on a move, from the main line and all variations."""
+    # some studies put an opening name in the Variant header, which the parser takes for an unknown chess variant
+    pgn_text = re.sub(r'\[Variant "(?!Standard|From Position|Chess960)[^"]*"\]\s*', '', pgn_text)
     stream = io.StringIO(pgn_text)
     while True:
         try:

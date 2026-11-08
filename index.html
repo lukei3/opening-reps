@@ -246,6 +246,13 @@
     <div class="pl-wrap pl-modes"><div class="chips" id="plMode"><button type="button" class="chip" data-mode="adv" hidden>Plan advisor</button><button type="button" class="chip" data-mode="drill" hidden>Plan drill</button><button type="button" class="chip on" data-mode="ideas">Ideas</button><button type="button" class="chip" data-mode="themes">Structures</button><button type="button" class="chip" data-mode="stats">What players do</button></div></div>
     <div class="pl-wrap" id="plIdeasPane">
       <div class="sthead"><h2>Ideas in the King's Indian</h2><p class="muted small">The common positions players reach at moves 8 to 14. For each, the engine's good moves grouped by the idea they serve, and what real players chose. Tap a move to see it, or play its line.</p></div>
+      <div id="idSource" class="chips"></div>
+      <div id="idAnyCtl" class="ad-ctl" hidden>
+        <button id="idAnyTrain" type="button" class="primary">Use my Train position</button>
+        <button id="idAnyRandom" type="button" class="ghost">Random common position</button>
+        <input id="idAnyFen" type="text" placeholder="or paste a position (FEN)" spellcheck="false"><button id="idAnyFenGo" type="button" class="ghost">Show</button>
+      </div>
+      <p id="idMsg" class="muted small"></p>
       <div id="idSide" class="chips"></div>
       <div class="ad-ctl"><select id="idPick" aria-label="Position"></select><button id="idRandom" type="button" class="ghost">Random position</button><button id="idUnsure" type="button" class="ghost" title="Positions where your verdict teaches the namer the most">Least sure first</button></div>
       <div class="ad-grid">
