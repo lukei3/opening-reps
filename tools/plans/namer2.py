@@ -149,6 +149,12 @@ def main():
             if x is None or v.get('idea') in (None, 'unclear') or v.get('verdict') == 'skip':
                 continue
             X.append(x); src.append('your-verdicts')
+            if v.get('pick') and v['pick'] != 'none':
+                Y.append({v['pick']}); neg.append({v['idea']} if v['verdict'] == 'wrong' else set())
+                continue
+            if v['verdict'] == 'unsure':
+                X.pop(); src.pop()
+                continue
             if v['verdict'] in ('right', 'partly'):
                 Y.append({v['idea']}); neg.append(set())
             else:

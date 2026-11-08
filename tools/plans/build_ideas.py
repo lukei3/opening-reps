@@ -101,7 +101,7 @@ def main():
         out = []
         for p in P:
             order = np.argsort(-p)
-            out.append([(ideas[k], float(p[k])) for k in order[:3]])
+            out.append([(ideas[k], float(p[k])) for k in order[:8]])
         return out
 
     positions = json.load(open(a.positions, encoding='utf-8'))
@@ -139,7 +139,9 @@ def main():
             g = groups.setdefault(idea, {'theme': idea, 'name': 'No clear idea (the namer is not sure)' if idea == 'unclear' else NAMES.get(idea, idea), 'moves': []})
             g['moves'].append({'san': sans[0] if sans else l['uci'], 'uci': l['uci'], 'cp': sign * l['cp'], 'conf': round(p, 2),
                                'also': [{'theme': t, 'name': NAMES.get(t, t), 'p': round(q, 2)} for t, q in top[1:] if q >= 0.35],
-                               'pv': sans, 'prepares': prepares})
+                               'pv': sans, 'prepares': prepares,
+                               'cands': [{'theme': t, 'name': NAMES.get(t, t)} for t, q in top
+                                         if place_idea(board, l['pv'], t)[0] != 'unclear' and t != idea][:3]})
             use[idea] += 1
         legal = {board.san(mv): mv for mv in board.legal_moves}
         pm = [(d, legal[d['san']]) for d in pos['played'] if d['san'] in legal]

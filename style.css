@@ -950,3 +950,7 @@ table.ana th:nth-child(2) { text-align: center; }
 .id-prep { font-size: 12.5px; color: var(--accent); }
 .id-v.on[data-v="partly"] { border-color: var(--warn); color: var(--warn); }
 .id-v.on[data-v="skip"] { border-color: var(--muted); color: var(--muted); }
+
+.id-pick { font-size: 12px; padding: 3px 9px; }
+.id-pick.on { border-color: var(--good); color: var(--good); }
+.id-note { flex: 1 1 180px; min-width: 140px; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; font-size: 12.5px; }

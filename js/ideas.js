@@ -19,7 +19,7 @@ const saveVerdicts = () => { try { localStorage.setItem(FB_KEY, JSON.stringify(v
 const vKey = (fen, uci) => fen.split(' ').slice(0, 4).join(' ') + '|' + uci;
 const CHOICES = [['right', 'Right', '1'], ['partly', 'Partly', '2'], ['wrong', 'Wrong', '3'], ['skip', "Can't tell", '4']];
 function tally() {
-  const v = Object.values(verdicts).filter((x) => x.verdict !== 'skip');
+  const v = Object.values(verdicts).filter((x) => x.verdict !== 'skip' && x.verdict !== 'unsure');
   const right = v.filter((x) => x.verdict === 'right').length, partly = v.filter((x) => x.verdict === 'partly').length;
   return { n: v.length, all: Object.keys(verdicts).length, right, partly, score: v.length ? (right + 0.5 * partly) / v.length : 0 };
 }
@@ -85,7 +85,7 @@ function render() {
   $('idPick').innerHTML = list.map((x, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${esc(lineText(x.line))} (${x.games.toLocaleString()} games)</option>`).join('');
   $('idLine').textContent = fullLine(p.line);
   board.set({ pieces: pieces(p.fen), orientation: view.side, lastMove: null });
-  const firstOpen = p.ideas.flatMap((g) => g.moves).find((m) => !verdicts[vKey(p.fen, m.uci)]);
+  const firstOpen = p.ideas.flatMap((g) => g.moves).find((m) => !done(p, m));
   focus = firstOpen ? firstOpen.uci : null;
   drawArrows(p, focus);
   const ideas = p.ideas.map((g, k) => `<div class="id-idea">
@@ -98,15 +98,15 @@ function render() {
         ${also ? `<span class="muted small"> · also: ${also}</span>` : ''}
         <span class="id-pv muted small">${esc(m.pv.join(' '))}</span>
         <span class="id-judge"><button type="button" class="ghost id-play" data-uci="${m.uci}">Play the line</button>
-          <span class="muted small">“${esc(g.name)}” for ${esc(m.san)}${m.prepares ? ' (via ' + esc(m.prepares) + ')' : ''}?</span>
-          ${CHOICES.map(([k, label, key]) => `<button type="button" class="ghost id-v${v && v.verdict === k ? ' on' : ''}" data-v="${k}" data-uci="${m.uci}" data-idea="${g.theme}" title="Key ${key}">${label} <span class="id-key">${key}</span></button>`).join('')}</span></div>`;
+          ${g.theme === 'unclear' || (v && v.verdict === 'wrong') ? pickRow(p, m, g, v) : `<span class="muted small">“${esc(g.name)}” for ${esc(m.san)}${m.prepares ? ' (via ' + esc(m.prepares) + ')' : ''}?</span>
+          ${CHOICES.map(([k, label, key]) => `<button type="button" class="ghost id-v${v && v.verdict === k ? ' on' : ''}" data-v="${k}" data-uci="${m.uci}" data-idea="${g.theme}" title="Key ${key}">${label} <span class="id-key">${key}</span></button>`).join('')}`}</span></div>`;
       }).join('')}
     </div>`).join('');
   const played = p.played.map((m) => `<tr><td><b>${esc(m.san)}</b></td><td>${Math.round(m.share * 100)}%</td><td class="${m.adj > 0.01 ? 'good' : m.adj < -0.01 ? 'bad' : ''}">${m.adj >= 0 ? '+' : '−'}${Math.abs(m.adj * 100).toFixed(1)}</td><td>${esc(m.name)}${m.conf < 0.45 ? ' <span class="id-unsure">unsure</span>' : ''}</td><td>${m.engine_good ? '✓' : '<span class="muted">not in the engine\'s top moves</span>'}</td></tr>`).join('');
   const t = tally();
   $('idBody').innerHTML = `
     <div class="id-tally">Your verdicts: <b>${t.all}</b>${t.n ? ` · namer score <b>${Math.round(100 * t.score)}%</b> (right ${t.right}, partly ${t.partly}, wrong ${t.n - t.right - t.partly})` : ''}.
-      <span class="muted small">Quick keys: 1 right, 2 partly, 3 wrong, 4 can't tell. The highlighted move is next, and it moves on by itself.</span>
+      <span class="muted small">Quick keys: 1 right, 2 partly, 3 wrong, 4 can't tell. On an unsure move (or after Wrong), 1 to 3 pick the idea and 4 is none of these. The highlighted move is next, and it moves on by itself.</span>
       <button type="button" class="ghost" id="idExport"${t.all ? '' : ' disabled'}>Save my verdicts as a file</button></div>
     <p class="muted small">Engine evaluation of the best move: ${pawns(p.best_cp)} for the side to move. ${p.games.toLocaleString()} real games reached this position.</p>
     <h3 class="ad-h">The engine's good moves, grouped by idea</h3>${ideas}
@@ -115,19 +115,37 @@ function render() {
     <p class="muted small th-note">Good moves are those within half a pawn of the engine's best (Stockfish, depth 18). Each move's idea is named by a model trained on 1,500 expert-labelled positions (the Strategic Test Suite); on positions it had not seen, it named the right idea about 80% of the time, so a label can be wrong. "Result vs rating" is how games with that move scored against what the ratings predicted, in points.</p>`;
 }
 
+// "Pick the idea": the namer's best guesses that fit this move or its line, plus "none of these" and a short note.
+function pickRow(p, m, g, v) {
+  const cands = (m.cands || []).slice(0, 3);
+  const chosen = v && v.pick;
+  const wrongNote = v && v.verdict === 'wrong' ? '<span class="muted small">Not that. What is it for?</span>' : `<span class="muted small">What is ${esc(m.san)} for?</span>`;
+  return `${wrongNote}
+    ${cands.map((c, i) => `<button type="button" class="ghost id-pick${chosen === c.theme ? ' on' : ''}" data-pick="${c.theme}" data-uci="${m.uci}" data-idea="${g.theme}" title="Key ${i + 1}">${esc(c.name)} <span class="id-key">${i + 1}</span></button>`).join('')}
+    <button type="button" class="ghost id-pick${chosen === 'none' ? ' on' : ''}" data-pick="none" data-uci="${m.uci}" data-idea="${g.theme}" title="Key 4">None of these / can't tell <span class="id-key">4</span></button>
+    <input class="id-note" data-uci="${m.uci}" type="text" placeholder="optional note, e.g. prepares f5" value="${esc((v && v.note) || '')}">`;
+}
+
 function nextOpenPosition() {
   for (let k = 1; k <= list.length; k++) {
     const i = (cur + k) % list.length, p = list[i];
-    if (p.ideas.some((g) => g.moves.some((m) => !verdicts[vKey(p.fen, m.uci)]))) return i;
+    if (p.ideas.some((g) => g.moves.some((m) => !done(p, m)))) return i;
   }
   return cur;
 }
 
-function record(uci, idea, verdict) {
+function done(p, m) {
+  const v = verdicts[vKey(p.fen, m.uci)];
+  return !!v && (v.verdict !== 'wrong' || !!v.pick) && !(v.verdict === 'unsure' && !v.pick);
+}
+
+function record(uci, idea, verdict, pick) {
   const p = list[cur];
-  verdicts[vKey(p.fen, uci)] = { fen: p.fen, uci, idea, verdict, at: new Date().toISOString() };
+  const key = vKey(p.fen, uci);
+  const old = verdicts[key] || {};
+  verdicts[key] = { fen: p.fen, uci, idea, verdict, pick: pick || (verdict === old.verdict ? old.pick : undefined), note: old.note, at: new Date().toISOString() };
   saveVerdicts();
-  const left = p.ideas.some((g) => g.moves.some((m) => !verdicts[vKey(p.fen, m.uci)]));
+  const left = p.ideas.some((g) => g.moves.some((m) => !done(p, m)));
   if (!left) cur = nextOpenPosition();
   render();
   const el = document.querySelector('.id-move.focus');
@@ -158,11 +176,29 @@ export async function showIdeas() {
     document.addEventListener('keydown', (e) => {
       if ($('plIdeasPane').hidden || $('tab-plans').hidden || !focus || e.ctrlKey || e.metaKey || e.altKey) return;
       if (/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) return;
-      const c = CHOICES.find(([, , key]) => key === e.key);
-      if (!c) return;
       const p = list[cur];
       const g = p.ideas.find((x) => x.moves.some((m) => m.uci === focus));
-      if (g) { e.preventDefault(); record(focus, g.theme, c[0]); }
+      if (!g) return;
+      const m = g.moves.find((x) => x.uci === focus);
+      const v = verdicts[vKey(p.fen, focus)];
+      if (g.theme === 'unclear' || (v && v.verdict === 'wrong')) {
+        const n = +e.key;
+        if (!(n >= 1 && n <= 4)) return;
+        const cands = (m.cands || []).slice(0, 3);
+        const pick = n === 4 ? 'none' : (cands[n - 1] || {}).theme;
+        if (!pick) return;
+        e.preventDefault();
+        record(focus, g.theme, g.theme === 'unclear' ? 'unsure' : 'wrong', pick);
+        return;
+      }
+      const c = CHOICES.find(([, , key]) => key === e.key);
+      if (c) { e.preventDefault(); record(focus, g.theme, c[0]); }
+    });
+    $('idBody').addEventListener('change', (e) => {
+      const inp = e.target.closest('.id-note'); if (!inp) return;
+      const p = list[cur], key = vKey(p.fen, inp.dataset.uci);
+      verdicts[key] = { ...(verdicts[key] || { fen: p.fen, uci: inp.dataset.uci, verdict: 'unsure' }), note: inp.value.trim(), at: new Date().toISOString() };
+      saveVerdicts();
     });
     $('idBody').addEventListener('click', (e) => {
       const p = list[cur];
@@ -173,6 +209,8 @@ export async function showIdeas() {
       }
       const vb = e.target.closest('.id-v');
       if (vb) { record(vb.dataset.uci, vb.dataset.idea, vb.dataset.v); return; }
+      const pb = e.target.closest('.id-pick');
+      if (pb) { record(pb.dataset.uci, pb.dataset.idea, pb.dataset.idea === 'unclear' ? 'unsure' : 'wrong', pb.dataset.pick); return; }
       const play = e.target.closest('.id-play');
       if (play) { const m = p.ideas.flatMap((g) => g.moves).find((x) => x.uci === play.dataset.uci); if (m) playLine(p, m); return; }
       const mv = e.target.closest('.id-move');
