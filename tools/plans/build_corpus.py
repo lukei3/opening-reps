@@ -80,7 +80,15 @@ PUZZLE_KEEP = {'advancedPawn', 'attackingF2F7', 'kingsideAttack', 'queensideAtta
                'bishopEndgame', 'knightEndgame', 'equality', 'advantage', 'crushing', 'mate'}
 
 
+SEEN = set()
+
+
 def out_row(f, **kw):
+    """Write one row, skipping exact repeats (same position, move and comment from the same kind of source)."""
+    key = (' '.join(kw['fen'].split()[:4]), kw['uci'], kw['trust'], (kw.get('text') or '')[:80])
+    if key in SEEN:
+        return
+    SEEN.add(key)
     f.write(json.dumps(kw, ensure_ascii=False, separators=(',', ':')) + '\n')
 
 
@@ -186,6 +194,21 @@ def do_studies(root, f, counts):
         pgn_comments(open(p, encoding='utf-8', errors='replace').read(), 'lichess-studies', 'comment', f, counts)
 
 
+def do_practice(root, f, counts):
+    for p in sorted(glob.glob(os.path.join(root, 'practice', '*.pgn'))):
+        pgn_comments(open(p, encoding='utf-8', errors='replace').read(), 'lichess-practice', 'comment', f, counts)
+
+
+def do_jsonl(path, f, counts):
+    """Rows already in the shared format (Wikibooks, the books)."""
+    if not os.path.exists(path):
+        return
+    for line in open(path, encoding='utf-8'):
+        r = json.loads(line)
+        out_row(f, **r)
+        counts[r['src']] += 1
+
+
 def do_chessgpt(root, f, counts, limit):
     n = 0
     for p in sorted(glob.glob(os.path.join(root, 'chessgpt', 'annotated_pgn-data.jsonl-*'))):
@@ -224,7 +247,8 @@ def main():
     counts = collections.Counter()
     with gzip.open(a.out, 'wt', encoding='utf-8') as f:
         for name, fn in (('sts', lambda: do_sts(a.raw, f, counts)), ('positional puzzles', lambda: do_neil(a.raw, f, counts)),
-                         ('lichess studies', lambda: do_studies(a.raw, f, counts)), ('chessgpt', lambda: do_chessgpt(a.raw, f, counts, a.chessgpt)),
+                         ('lichess studies', lambda: do_studies(a.raw, f, counts)), ('lichess practice', lambda: do_practice(a.raw, f, counts)),
+                         ('wikibooks', lambda: do_jsonl(os.path.join(a.raw, '..', 'wikibooks.jsonl'), f, counts)), ('chessgpt', lambda: do_chessgpt(a.raw, f, counts, a.chessgpt)),
                          ('mate', lambda: do_mate(a.raw, f, counts, a.mate)), ('puzzles', lambda: do_puzzles(a.raw, f, counts, a.puzzles))):
             before = sum(counts.values())
             fn()

@@ -68,8 +68,24 @@ def piece_filter(desc):
     return None, None, None
 
 
+def old_style(tok):
+    """Staunton-era notation: 'K. Kt. to B. 3rd', 'Q. to her R's 8th', 'B. takes Kt. (ch.)' -> 'KKt-B3', 'Q-QR8', 'BxKt'."""
+    t = tok
+    if ' to ' not in t and ' takes ' not in t and 'Castles' not in t:
+        return tok
+    t = re.sub(r'\((best|good|bad|weak|strong|[a-z ,!?]{1,20})\)', '', t)
+    t = re.sub(r'\(?\bch\.?\)?|\bcheck(ing)?\b|\bmate\b', '', t)
+    t = re.sub(r'\bher\b', 'Q', t)
+    t = re.sub(r'\bhis\b', 'K', t)
+    t = t.replace("'s", '').replace('\u2019s', '')
+    t = re.sub(r'(\d)(st|nd|rd|th|d)\b', r'\1', t)
+    t = t.replace(' takes ', 'x').replace(' to ', '-')
+    t = t.replace('.', '')
+    return t
+
+
 def clean(tok):
-    t = tok.upper().replace('×', 'X').replace('–', '-').replace('—', '-').replace(':', 'X')
+    t = old_style(tok).upper().replace('×', 'X').replace('–', '-').replace('—', '-').replace(':', 'X')
     t = re.sub(r'\(([A-Z]+)\)\s*$', r'=\1', t)          # promotion written as (Q)
     t = re.sub(r'\s+', '', t)
     t = re.sub(r'(DIS\.?)?(DBL\.?)?CH\.?|\+|MATE|E\.P\.|[!?]+|\([A-Z]\)$', '', t)
@@ -191,6 +207,8 @@ def split_moves(body):
         return None, None
     w = parts[0]
     b = parts[1] if len(parts) > 1 else None
+    if b:
+        b = re.sub(r'^\d+\s*\.\s*', '', b)       # Staunton numbers both columns: '1. P. to K's 4th.   1. P. to K's 4th.'
     return w, b
 
 
@@ -268,8 +286,13 @@ def main():
     ap.add_argument('--out', required=True)
     a = ap.parse_args()
     with open(a.out, 'w', encoding='utf-8') as out:
-        for name, src in (('capablanca-chess-fundamentals.txt', 'book-capablanca'), ('lasker-chess-strategy.txt', 'book-lasker')):
-            s = convert(os.path.join(a.books, name), src, out)
+        for name, src in (('capablanca-chess-fundamentals.txt', 'book-capablanca'), ('lasker-chess-strategy.txt', 'book-lasker'),
+                          ('pg16377.txt', 'book-staunton'), ('pg4913.txt', 'book-lasker-checkers'), ('pg34180.txt', 'book-morphy'),
+                          ('pg4902.txt', 'book-bird'), ('pg55278.txt', 'book-young'), ('pg78804.txt', 'book-philidor')):
+            path = os.path.join(a.books, name)
+            if not os.path.exists(path):
+                continue
+            s = convert(path, src, out)
             print(src, s)
 
 
