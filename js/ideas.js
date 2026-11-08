@@ -94,7 +94,8 @@ function render() {
         const v = verdicts[vKey(p.fen, m.uci)];
         const also = (m.also || []).map((x) => esc(x.name)).join(', ');
         const prep = m.prepares ? ` <span class="id-prep">preparing ${esc(m.prepares)}</span>` : '';
-        return `<div class="id-move${focus === m.uci ? ' focus' : ''}" data-uci="${m.uci}"><b>${esc(m.san)}</b>${prep} <span class="muted">${pawns(m.cp)}</span>${m.conf < 0.45 ? ' <span class="id-unsure" title="The idea namer is not sure about this label">label unsure</span>' : ''}
+        const plan = m.plan ? ` <span class="id-plan" title="The plan this whole engine line belongs to, from grouping 109,000 engine lines">plan: ${esc(m.plan)}</span>` : '';
+        return `<div class="id-move${focus === m.uci ? ' focus' : ''}" data-uci="${m.uci}"><b>${esc(m.san)}</b>${prep}${plan} <span class="muted">${pawns(m.cp)}</span>${m.conf < 0.45 ? ' <span class="id-unsure" title="The idea namer is not sure about this label">label unsure</span>' : ''}
         ${also ? `<span class="muted small"> · also: ${also}</span>` : ''}
         <span class="id-pv muted small">${esc(m.pv.join(' '))}</span>
         <span class="id-judge"><button type="button" class="ghost id-play" data-uci="${m.uci}">Play the line</button>

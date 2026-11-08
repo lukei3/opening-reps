@@ -55,7 +55,7 @@ export async function showWhatNow(box, fen) {
   box.innerHTML = `<div class="wn card">
     <h3>What now? ${who}'s ideas here</h3>
     <p class="muted small">The engine's good moves from this position, grouped by the idea they serve (${p.games ? p.games.toLocaleString() + ' real games reached it' : 'from the opening book'}).</p>
-    ${ideas.map((g) => `<div class="wn-idea"><b>${esc(g.name)}</b>: ${g.moves.map((m) => `${esc(m.san)}${m.prepares ? ` <span class="muted small">(preparing ${esc(m.prepares)})</span>` : ''} <span class="muted small">${pawns(m.cp)}</span>`).join(', ')}</div>`).join('')}
+    ${ideas.map((g) => `<div class="wn-idea"><b>${esc(g.name)}</b>: ${g.moves.map((m) => `${esc(m.san)}${m.prepares ? ` <span class="muted small">(preparing ${esc(m.prepares)})</span>` : ''}${m.plan ? ` <span class="muted small">· plan: ${esc(m.plan)}</span>` : ''} <span class="muted small">${pawns(m.cp)}</span>`).join(', ')}</div>`).join('')}
     <div class="row"><button type="button" class="ghost" data-wn="quiz">Test me</button></div>
     <div class="wn-quiz" hidden></div></div>`;
   box.querySelector('[data-wn="quiz"]').onclick = () => quiz(box.querySelector('.wn-quiz'), p, ideas);

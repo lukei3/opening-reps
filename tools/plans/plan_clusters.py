@@ -73,8 +73,15 @@ def main():
             continue
         rows.append(r); X.append(np.concatenate([np.array(z) * 0.6, lf])); moves.append(words)
     X = np.array(X)
-    X = (X - X.mean(0)) / (X.std(0) + 1e-6)
+    mu, sd = X.mean(0), X.std(0) + 1e-6
+    X = (X - mu) / sd
     km = KMeans(a.k, n_init=4, random_state=0).fit(X)
+    import pickle
+    with open(a.json.replace('.json', '-model.pkl'), 'wb') as fh:
+        pickle.dump({'mu': mu, 'sd': sd, 'centers': km.cluster_centers_, 'parts': PARTS}, fh)
+    with gzip.open(a.json.replace('.json', '-assign.jsonl.gz'), 'wt', encoding='utf-8') as fh:
+        for r, c in zip(rows, km.labels_):
+            fh.write(json.dumps({'fen': r['fen'], 'uci': r['uci'], 'group': int(c)}) + '\n')
     human = {}
     for p in a.corpus:
         op = gzip.open if p.endswith('.gz') else open

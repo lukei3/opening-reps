@@ -960,3 +960,5 @@ table.ana th:nth-child(2) { text-align: center; }
 .wn h3 { margin: 0 0 4px; font-size: 15px; }
 .wn-idea { padding: 5px 0; border-top: 1px solid var(--line); font-size: 13.5px; line-height: 1.45; }
 .wn-fb.good { color: var(--good); } .wn-fb.bad { color: var(--bad); }
+
+.id-plan { font-size: 12px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }

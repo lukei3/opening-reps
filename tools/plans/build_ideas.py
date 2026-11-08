@@ -93,7 +93,16 @@ def main():
     ap.add_argument('--report', required=True)
     ap.add_argument('--brain', nargs='*', default=[])
     ap.add_argument('--engine-labels', default='')
+    ap.add_argument('--plans', default='', help='plan-clusters-assign.jsonl.gz: the plan group of each measured engine line')
+    ap.add_argument('--plan-names', default='lab/plans/out/plan-names.json')
     a = ap.parse_args()
+    plan_of = {}
+    if a.plans:
+        import gzip as _gz
+        names = json.load(open(a.plan_names, encoding='utf-8'))
+        for line in _gz.open(a.plans, 'rt', encoding='utf-8'):
+            r = json.loads(line)
+            plan_of[' '.join(r['fen'].split()[:4]) + '|' + r['uci']] = names.get(str(r['group']))
     with open(a.model, 'rb') as f:
         m = pickle.load(f)
     if m.get('learned'):
@@ -144,7 +153,7 @@ def main():
             g = groups.setdefault(idea, {'theme': idea, 'name': 'No clear idea (the namer is not sure)' if idea == 'unclear' else NAMES.get(idea, idea), 'moves': []})
             g['moves'].append({'san': sans[0] if sans else l['uci'], 'uci': l['uci'], 'cp': sign * l['cp'], 'conf': round(p, 2),
                                'also': [{'theme': t, 'name': NAMES.get(t, t), 'p': round(q, 2)} for t, q in top[1:] if q >= 0.35],
-                               'pv': sans, 'prepares': prepares,
+                               'pv': sans, 'prepares': prepares, 'plan': plan_of.get(' '.join(pos['fen'].split()[:4]) + '|' + l['uci']),
                                'cands': [{'theme': t, 'name': NAMES.get(t, t)} for t, q in top
                                          if place_idea(board, l['pv'], t)[0] != 'unclear' and t != idea][:3]})
             use[idea] += 1
