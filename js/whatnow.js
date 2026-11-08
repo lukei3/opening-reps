@@ -2,6 +2,9 @@
 // idea they serve) and offer a one-question quiz. Reads the same data as the Ideas view: data/plans/ideas.json (the common
 // King's Indian positions) and, when present, data/plans/ideas-all.json (common positions from every opening).
 
+import { Chess } from '../lib/chess.js';
+import { getBookPosition } from './book.js';
+
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let index = null, loading = null;
 
@@ -47,18 +50,41 @@ export async function showWhatNow(box, fen) {
   if (!box) return;
   const map = await load();
   const key = fen.split(' ').slice(0, 4).join(' ');
-  const p = map.get(key) || await fromShards(key);
+  let p = map.get(key) || await fromShards(key);
+  let via = [];
+  const clear = (x) => x && x.ideas.some((g) => g.theme !== 'unclear');
+  if (!clear(p)) ({ p, via } = await nearby(fen, map));
   if (!p) { box.innerHTML = ''; return; }
   const ideas = p.ideas.filter((g) => g.theme !== 'unclear').slice(0, 3);
   if (!ideas.length) { box.innerHTML = ''; return; }
   const who = p.side === 'w' ? 'White' : 'Black';
   box.innerHTML = `<div class="wn card">
     <h3>What now? ${who}'s ideas here</h3>
+    ${via.length ? `<p class="small">Your line stops just before a common position. Play usually goes on <b>${esc(via.join(' '))}</b>, and from there:</p>` : ''}
     <p class="muted small">The engine's good moves from this position, grouped by the idea they serve (${p.games ? p.games.toLocaleString() + ' real games reached it' : 'from the opening book'}).</p>
     ${ideas.map((g) => `<div class="wn-idea"><b>${esc(g.name)}</b>: ${g.moves.map((m) => `${esc(m.san)}${m.prepares ? ` <span class="muted small">(preparing ${esc(m.prepares)})</span>` : ''}${m.plan ? ` <span class="muted small">· plan: ${esc(m.plan)}</span>` : ''} <span class="muted small">${pawns(m.cp)}</span>`).join(', ')}</div>`).join('')}
     <div class="row"><button type="button" class="ghost" data-wn="quiz">Test me</button></div>
     <div class="wn-quiz" hidden></div></div>`;
   box.querySelector('[data-wn="quiz"]').onclick = () => quiz(box.querySelector('.wn-quiz'), p, ideas);
+}
+
+// When the line ends just short of a position with ideas, follow the opening book's most-played moves (up to six) to reach one.
+async function nearby(fen, map) {
+  const g = new Chess(fen);
+  const via = [];
+  for (let k = 0; k < 6; k++) {
+    let data;
+    try { data = await getBookPosition(g.fen()); } catch (e) { return { p: null, via: [] }; }
+    if (!data || !data.moves.length) return { p: null, via: [] };
+    const top = data.moves[0];
+    const mv = g.move(top.san);
+    if (!mv) return { p: null, via: [] };
+    via.push((g.turn() === 'b' ? `${g.moveNumber()}.` : `${g.moveNumber() - 1}...`) + mv.san);
+    const key = g.fen().split(' ').slice(0, 4).join(' ');
+    const p = map.get(key) || await fromShards(key);
+    if (p && p.ideas.some((x) => x.theme !== 'unclear')) return { p, via };
+  }
+  return { p: null, via: [] };
 }
 
 function quiz(el, p, ideas) {
