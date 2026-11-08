@@ -1,0 +1,44 @@
+# Plans lab (see lab/plans/README.md): Stockfish's best moves and lines for a list of positions. Nothing in the app uses this.
+name: "Plans lab: engine lines for positions"
+
+on:
+  workflow_dispatch:
+    inputs:
+      positions:
+        description: 'Positions file in the repo'
+        default: 'lab/plans/data/kid-positions.json'
+      depth:
+        description: 'Search depth'
+        default: '18'
+      multipv:
+        description: 'Best moves per position'
+        default: '6'
+
+jobs:
+  lines:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install chess
+      - run: sudo apt-get update && sudo apt-get install -y stockfish
+      - name: Analyse
+        env:
+          POS: ${{ inputs.positions }}
+          DEPTH: ${{ inputs.depth }}
+          MPV: ${{ inputs.multipv }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python tools/plans/engine_lines.py "${POS}" --out "lines-${SHARD}.jsonl" --shard "${SHARD}" --shards 6 --depth "${DEPTH}" --multipv "${MPV}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plans-lines-${{ matrix.shard }}
+          path: lines-${{ matrix.shard }}.jsonl
+          retention-days: 30
